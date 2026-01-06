@@ -1,0 +1,6 @@
+# Vendored dependencies
+.next
+node_modules
+
+# Build files
+dist
