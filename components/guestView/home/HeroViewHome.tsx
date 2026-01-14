@@ -188,7 +188,7 @@ export default function HeroViewHome() {
                 <div className="relative p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-gray-100">
                   <img
                     src="/assets/image/logoHMPTI.png"
-                    alt="HMPTI Logo"
+                    alt="HMPTI logo"
                     className="w-full max-w-xs h-auto object-contain transform group-hover:scale-105 transition-transform duration-700 will-change-transform"
                   />
 
