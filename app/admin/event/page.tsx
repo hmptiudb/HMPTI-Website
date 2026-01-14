@@ -1,12 +1,12 @@
 "use client";
 
 import { eventsCollection } from "@/lib/firebase";
-import { addDoc, deleteDoc, doc, getDocs, updateDoc, orderBy, query } from "firebase/firestore";
+import { addDoc, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import { FaEdit, FaExternalLinkAlt, FaPlus, FaSearch, FaTimes, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { uploadToCloudinary } from "../../../app/api/upload";
 import AdminLayout from "../AdminLayout";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaTimes, FaExternalLinkAlt } from "react-icons/fa";
 
 interface Event {
   eventName: string;
@@ -34,10 +34,10 @@ function EventForm({ existingData, onClose }: { existingData?: Event; onClose: (
 
   useEffect(() => {
     if (!image) return;
-    
+
     const objectUrl = URL.createObjectURL(image);
     setPreviewUrl(objectUrl);
-    
+
     return () => URL.revokeObjectURL(objectUrl);
   }, [image]);
 
@@ -46,7 +46,7 @@ function EventForm({ existingData, onClose }: { existingData?: Event; onClose: (
       setImage(null);
       return;
     }
-    
+
     setImage(e.target.files[0]);
   };
 
@@ -107,18 +107,13 @@ function EventForm({ existingData, onClose }: { existingData?: Event; onClose: (
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-screen md:max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">
-              {existingData ? "Edit Event" : "Tambah Event"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors"
-            >
+            <h2 className="text-xl font-semibold text-gray-800">{existingData ? "Edit Event" : "Tambah Event"}</h2>
+            <button onClick={onClose} className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors">
               <FaTimes className="text-lg" />
             </button>
           </div>
         </div>
-        
+
         <div className="overflow-y-auto flex-grow p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -133,19 +128,19 @@ function EventForm({ existingData, onClose }: { existingData?: Event; onClose: (
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Pelaksanaan Event</label>
-                <input 
-                  type="date" 
-                  value={dateEvent} 
-                  onChange={(e) => setDateEvent(e.target.value)} 
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-                  required 
+                <input
+                  type="date"
+                  value={dateEvent}
+                  onChange={(e) => setDateEvent(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi Event</label>
               <textarea
@@ -161,10 +156,10 @@ function EventForm({ existingData, onClose }: { existingData?: Event; onClose: (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status Event</label>
-                <select 
-                  value={statusEvent} 
-                  onChange={(e) => setStatusEvent(e.target.value)} 
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
+                <select
+                  value={statusEvent}
+                  onChange={(e) => setStatusEvent(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   required
                 >
                   <option value="Selesai">Selesai</option>
@@ -191,10 +186,10 @@ function EventForm({ existingData, onClose }: { existingData?: Event; onClose: (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Event</label>
-                <select 
-                  value={categoryEvent} 
-                  onChange={(e) => setCategoryEvent(e.target.value)} 
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
+                <select
+                  value={categoryEvent}
+                  onChange={(e) => setCategoryEvent(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   required
                 >
                   <option value="Web Development">Web Development</option>
@@ -211,10 +206,10 @@ function EventForm({ existingData, onClose }: { existingData?: Event; onClose: (
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Audiens</label>
-                <select 
-                  value={categoryAudiens} 
-                  onChange={(e) => setCategoryAudiens(e.target.value)} 
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
+                <select
+                  value={categoryAudiens}
+                  onChange={(e) => setCategoryAudiens(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   required
                 >
                   <option value="Mahasiswa">Mahasiswa</option>
@@ -227,35 +222,27 @@ function EventForm({ existingData, onClose }: { existingData?: Event; onClose: (
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Upload Gambar</label>
-              <input 
-                type="file" 
-                onChange={handleImageChange} 
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-                accept="image/*" 
+              <input
+                type="file"
+                onChange={handleImageChange}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                accept="image/*"
               />
             </div>
-            
+
             {previewUrl && (
               <div className="flex justify-center mt-4">
                 <div className="relative h-48 w-full rounded-lg overflow-hidden border-2 border-gray-300">
-                  <img 
-                    src={previewUrl} 
-                    alt="Preview" 
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                 </div>
               </div>
             )}
           </form>
         </div>
-        
+
         <div className="p-6 border-t border-gray-200 bg-gray-50">
           <div className="flex gap-3 justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-              disabled={loading}
-            >
+            <button onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" disabled={loading}>
               Batal
             </button>
             <button
@@ -268,7 +255,11 @@ function EventForm({ existingData, onClose }: { existingData?: Event; onClose: (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   Loading...
                 </>
-              ) : existingData ? "Update Event" : "Tambah Event"}
+              ) : existingData ? (
+                "Update Event"
+              ) : (
+                "Tambah Event"
+              )}
             </button>
           </div>
         </div>
@@ -306,26 +297,26 @@ export default function EventTable() {
 
   useEffect(() => {
     let filtered = events;
-    
+
     if (searchTerm) {
       filtered = filtered.filter(
         (event) =>
           event.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           event.descriptionEvent.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          event.categoryEvent?.toLowerCase().includes(searchTerm.toLowerCase())
+          event.categoryEvent?.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
-    
+
     if (statusFilter !== "Semua") {
-      filtered = filtered.filter(event => event.statusEvent === statusFilter);
+      filtered = filtered.filter((event) => event.statusEvent === statusFilter);
     }
-    
+
     setFilteredEvents(filtered);
   }, [searchTerm, statusFilter, events]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Apakah Anda yakin ingin menghapus event ini?")) return;
-    
+
     try {
       await deleteDoc(doc(eventsCollection, id));
       setEvents(events.filter((event) => event.id !== id));
@@ -344,27 +335,33 @@ export default function EventTable() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
+    return date.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
   };
 
   const getStatusColor = (status: string | undefined) => {
     switch (status) {
-      case "Selesai": return "bg-green-100 text-green-800";
-      case "Sedang Berlangsung": return "bg-blue-100 text-blue-800";
-      case "Coming Soon": return "bg-yellow-100 text-yellow-800";
-      case "Batal": return "bg-red-100 text-red-800";
-      case "Pending": return "bg-gray-100 text-gray-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "Selesai":
+        return "bg-green-100 text-green-800";
+      case "Sedang Berlangsung":
+        return "bg-blue-100 text-blue-800";
+      case "Coming Soon":
+        return "bg-yellow-100 text-yellow-800";
+      case "Batal":
+        return "bg-red-100 text-red-800";
+      case "Pending":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   return (
     <AdminLayout>
-      <div className="md:ml-[250px] min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -397,11 +394,11 @@ export default function EventTable() {
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
-              
+
               <div>
-                <select 
-                  value={statusFilter} 
-                  onChange={(e) => setStatusFilter(e.target.value)} 
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
                   className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 >
                   <option value="Semua">Semua Status</option>
@@ -423,7 +420,7 @@ export default function EventTable() {
                 }}
               />
             )}
-            
+
             {loading ? (
               <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -433,13 +430,8 @@ export default function EventTable() {
                 <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
                   <FaSearch className="text-gray-500 text-xl" />
                 </div>
-                <p className="text-gray-500 text-lg">
-                  {searchTerm || statusFilter !== "Semua" ? "Tidak ada hasil pencarian" : "Belum ada event yang ditambahkan."}
-                </p>
-                <button
-                  onClick={() => setIsFormOpen(true)}
-                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                >
+                <p className="text-gray-500 text-lg">{searchTerm || statusFilter !== "Semua" ? "Tidak ada hasil pencarian" : "Belum ada event yang ditambahkan."}</p>
+                <button onClick={() => setIsFormOpen(true)} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                   Tambah Event Pertama
                 </button>
               </div>
@@ -448,43 +440,28 @@ export default function EventTable() {
                 {filteredEvents.map((event) => (
                   <div key={event.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="h-40 overflow-hidden">
-                      <img 
-                        src={event.imageUrl} 
-                        alt={event.eventName} 
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={event.imageUrl} alt={event.eventName} className="w-full h-full object-cover" />
                     </div>
                     <div className="p-4">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-semibold text-gray-800 line-clamp-1">{event.eventName}</h3>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(event.statusEvent)}`}>
-                          {event.statusEvent}
-                        </span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(event.statusEvent)}`}>{event.statusEvent}</span>
                       </div>
-                      
+
                       <p className="text-sm text-gray-500 mb-3">{formatDate(event.dateEvent)}</p>
-                      
+
                       <p className="text-sm text-gray-600 mb-4 line-clamp-2">{event.descriptionEvent}</p>
-                      
+
                       <div className="flex flex-wrap gap-1 mb-4">
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                          {event.categoryEvent}
-                        </span>
-                        <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                          {event.categoryAudiens}
-                        </span>
+                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{event.categoryEvent}</span>
+                        <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">{event.categoryAudiens}</span>
                       </div>
-                      
+
                       <div className="flex justify-between items-center">
-                        <a 
-                          href={event.linkForm} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-                        >
+                        <a href={event.linkForm} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1">
                           Link Form <FaExternalLinkAlt className="text-xs" />
                         </a>
-                        
+
                         <div className="flex gap-2">
                           <button
                             onClick={() => {
@@ -496,11 +473,7 @@ export default function EventTable() {
                           >
                             <FaEdit className="text-lg" />
                           </button>
-                          <button 
-                            onClick={() => handleDelete(event.id)} 
-                            className="text-red-600 hover:text-red-900 p-1 transition-colors"
-                            title="Hapus"
-                          >
+                          <button onClick={() => handleDelete(event.id)} className="text-red-600 hover:text-red-900 p-1 transition-colors" title="Hapus">
                             <FaTrash className="text-lg" />
                           </button>
                         </div>

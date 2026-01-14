@@ -1,39 +1,17 @@
 "use client";
 
+import TransitionLayout from "@/components/TransitionLayout";
 import { auth, db, eventsCollection, membersCollection, newsCollection, productsCollection } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, getDocs } from "firebase/firestore";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { 
-  AiFillProduct, 
-  AiOutlineLogout, 
-  AiOutlineDashboard,
-  AiOutlineTeam,
-  AiOutlineCalendar,
-  AiOutlineFileText,
-  AiOutlineShop
-} from "react-icons/ai";
-import { 
-  FaGithubSquare, 
-  FaInstagramSquare, 
-  FaRegNewspaper,
-  FaWhatsapp
-} from "react-icons/fa";
-import { 
-  FaPeopleGroup,
-  FaArrowRight
-} from "react-icons/fa6";
-import { 
-  MdEvent,
-  MdOutlineEmail,
-  MdOutlineNotificationsNone
-} from "react-icons/md";
-import { 
-  SiLimesurvey 
-} from "react-icons/si";
-import Link from "next/link";
-import TransitionLayout from "@/components/TransitionLayout";
+import { AiFillProduct, AiOutlineCalendar, AiOutlineFileText, AiOutlineShop, AiOutlineTeam } from "react-icons/ai";
+import { FaRegNewspaper, FaWhatsapp } from "react-icons/fa";
+import { FaArrowRight, FaPeopleGroup } from "react-icons/fa6";
+import { MdEvent, MdOutlineNotificationsNone } from "react-icons/md";
+import { SiLimesurvey } from "react-icons/si";
 import AdminLayout from "../AdminLayout";
 
 interface Event {
@@ -96,9 +74,9 @@ function DashboardCount() {
           getDocs(collection(db, "members")),
           getDocs(collection(db, "events")),
           getDocs(collection(db, "news")),
-          getDocs(collection(db, "products"))
+          getDocs(collection(db, "products")),
         ]);
-        
+
         setMemberCount(membersSnapshot.size);
         setEventCount(eventsSnapshot.size);
         setNewsCount(newsSnapshot.size);
@@ -117,36 +95,36 @@ function DashboardCount() {
       value: memberCount,
       icon: <FaPeopleGroup className="text-xl" />,
       color: "bg-blue-100 text-blue-600",
-      path: "/admin/member"
+      path: "/admin/member",
     },
     {
       title: "Jumlah Event",
       value: eventCount,
       icon: <MdEvent className="text-xl" />,
       color: "bg-purple-100 text-purple-600",
-      path: "/admin/event"
+      path: "/admin/event",
     },
     {
       title: "Jumlah Berita",
       value: newsCount,
       icon: <FaRegNewspaper className="text-xl" />,
       color: "bg-green-100 text-green-600",
-      path: "/admin/news"
+      path: "/admin/news",
     },
     {
       title: "Jumlah Produk",
       value: productCount,
       icon: <AiFillProduct className="text-xl" />,
       color: "bg-yellow-100 text-yellow-600",
-      path: "/admin/product"
+      path: "/admin/product",
     },
     {
       title: "Respon Survey",
       value: 20,
       icon: <SiLimesurvey className="text-xl" />,
       color: "bg-pink-100 text-pink-600",
-      path: "#"
-    }
+      path: "#",
+    },
   ];
 
   return (
@@ -155,9 +133,7 @@ function DashboardCount() {
         {stats.map((stat, index) => (
           <Link href={stat.path} key={index} className="group">
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 group-hover:shadow-md transition-all duration-200">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${stat.color}`}>
-                {stat.icon}
-              </div>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${stat.color}`}>{stat.icon}</div>
               <h3 className="text-sm font-medium text-gray-500">{stat.title}</h3>
               <p className="text-2xl font-bold mt-1">{stat.value}</p>
             </div>
@@ -254,13 +230,26 @@ function DashboardViewMember() {
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
           .slice(0, 5)
           .map((member) => (
-            <div key={member.id} className="flex items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors duration-200">
-              <img src={member.imageUrl} alt={member.name} className="w-10 h-10 rounded-full object-cover" />
-              <div className="ml-3 flex-1">
-                <h3 className="font-medium text-gray-900">{member.name}</h3>
-                <p className="text-sm text-gray-500">{member.division} • {member.position}</p>
+            <div key={member.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition">
+              {/* Avatar */}
+              {member.imageUrl ? (
+                <img src={member.imageUrl} alt={member.name} className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">{member.name?.charAt(0)}</div>
+              )}
+
+              {/* Info */}
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900 truncate">{member.name}</h3>
+                <p className="text-sm text-gray-500 truncate">
+                  {member.division} • {member.position}
+                </p>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${member.status === "Aktif" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
+
+              {/* Status */}
+              <span
+                className={`self-start sm:self-center text-xs px-2 py-1 rounded-full ${member.status === "Aktif" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
+              >
                 {member.status}
               </span>
             </div>
@@ -329,18 +318,19 @@ function DashboardViewProduct() {
   }, []);
 
   return (
-    <div className="w-full bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-      <div className="flex justify-between items-center mb-5">
+    <div className="w-full bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <h2 className="font-semibold text-lg flex items-center">
           <AiOutlineShop className="mr-2 text-yellow-500" />
           Produk Terbaru
         </h2>
-        <Link href="/admin/product" className="text-sm text-blue-500 font-medium flex items-center hover:underline">
+
+        <Link href="/admin/product" className="text-sm text-blue-500 font-medium flex items-center hover:underline self-start sm:self-auto">
           Lihat semua <FaArrowRight className="ml-1 text-xs" />
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {products
           .map((product) => ({
             ...product,
@@ -349,23 +339,23 @@ function DashboardViewProduct() {
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
           .slice(0, 3)
           .map((product) => (
-            <div key={product.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all duration-200">
-              <div className="h-40 overflow-hidden">
-                <img
-                  src={product.imageUrl}
-                  alt={product.productName}
-                  className="w-full h-full object-cover"
-                />
+            <div key={product.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition">
+              <div className="h-32 sm:h-36 md:h-40 overflow-hidden bg-gray-100">
+                {product.imageUrl ? (
+                  <img src={product.imageUrl} alt={product.productName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">No Image</div>
+                )}
               </div>
-              <div className="p-4">
-                <h3 className="font-medium text-gray-900">{product.productName}</h3>
-                <p className="text-lg font-semibold text-gray-800 mt-1">{product.priceProduct}</p>
+              <div className="p-3 sm:p-4 flex flex-col h-full">
+                <h3 className="font-medium text-gray-900 truncate">{product.productName}</h3>
+                <p className="text-base sm:text-lg font-semibold text-gray-800 mt-1">{product.priceProduct}</p>
                 <p className="text-sm text-gray-600 mt-2 line-clamp-2">{product.descriptionProduct}</p>
                 <a
                   href={`https://wa.me/${product.whatsappNumber}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-3 w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-all flex items-center justify-center text-sm"
+                  className="mt-4 w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition flex items-center justify-center text-sm"
                 >
                   <FaWhatsapp className="mr-2" />
                   WhatsApp
@@ -414,72 +404,62 @@ export default function Page() {
 
   return (
     <AdminLayout>
-    <div className="flex h-screen bg-gray-50">
-     
+      <div className="flex h-screen bg-gray-50">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <header className="bg-white border-b border-gray-200">
+            <div className="flex items-center justify-between h-16 px-4">
+              {/* Left */}
+              <div className="flex items-center gap-2">
+                <button className="md:hidden text-gray-500" onClick={() => setSidebarOpen(!sidebarOpen)}>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <h1 className="text-lg md:text-xl font-semibold text-gray-800">Dashboard</h1>
+              </div>
 
-      {/* Main Content */}
-      <div className="md:ml-64 flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200">
-          <div className="flex items-center justify-between h-16 px-4">
-            <div className="flex items-center">
-              <button 
-                className="md:hidden mr-2 text-gray-500"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                </svg>
-              </button>
-              <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-500 hover:text-gray-700">
-                <MdOutlineNotificationsNone className="text-xl" />
-              </button>
-              <button className="p-2 text-gray-500 hover:text-gray-700">
-                <MdOutlineEmail className="text-xl" />
-              </button>
-              <div className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
-                  {user.email ? user.email[0].toUpperCase() : 'A'}
+              {/* Right */}
+              <div className="flex items-center gap-3">
+                <button className="p-2 text-gray-500 hover:text-gray-700">
+                  <MdOutlineNotificationsNone />
+                </button>
+
+                <div className="hidden sm:flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">{user.email?.[0].toUpperCase()}</div>
+                  <span className="text-sm text-gray-700 max-w-[160px] truncate">{user.email}</span>
                 </div>
-                <span className="ml-2 text-sm font-medium text-gray-700 hidden md:block">
-                  {user.email}
-                </span>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
 
+          {/* Page Content */}
+          <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+            <TransitionLayout />
 
+            {/* Welcome Section */}
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-800">Selamat Datang, {user.email}</h1>
+              <p className="text-gray-600">Himpunan Mahasiswa Prodi Teknik Informatika</p>
+            </div>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-          <TransitionLayout />
-          
-          {/* Welcome Section */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Selamat Datang, {user.email}</h1>
-            <p className="text-gray-600">Himpunan Mahasiswa Prodi Teknik Informatika</p>
-          </div>
+            {/* Stats Cards */}
+            <DashboardCount />
 
-          {/* Stats Cards */}
-          <DashboardCount />
+            {/* Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              <DashboardViewMember />
+              <DashboardViewEvent />
+            </div>
 
-          {/* Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <DashboardViewMember />
-            <DashboardViewEvent />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <DashboardViewNews />
-            <DashboardViewProduct />
-          </div>
-        </main>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              <DashboardViewNews />
+              <DashboardViewProduct />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
     </AdminLayout>
   );
 }

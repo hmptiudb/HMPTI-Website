@@ -1,11 +1,11 @@
 "use client";
 import { newsCollection } from "@/lib/firebase";
-import { addDoc, doc, updateDoc, deleteDoc, getDocs, orderBy, query } from "firebase/firestore";
+import { addDoc, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import { FaEdit, FaPlus, FaSearch, FaTimes, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { uploadToCloudinary } from "../../../app/api/upload";
 import AdminLayout from "../AdminLayout";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaTimes, FaEye } from "react-icons/fa";
 
 interface NewsItem {
   id: string;
@@ -29,10 +29,10 @@ function NewsForm({ existingData, onClose }: { existingData?: NewsItem; onClose:
 
   useEffect(() => {
     if (!image) return;
-    
+
     const objectUrl = URL.createObjectURL(image);
     setPreviewUrl(objectUrl);
-    
+
     return () => URL.revokeObjectURL(objectUrl);
   }, [image]);
 
@@ -41,7 +41,7 @@ function NewsForm({ existingData, onClose }: { existingData?: NewsItem; onClose:
       setImage(null);
       return;
     }
-    
+
     setImage(e.target.files[0]);
   };
 
@@ -97,18 +97,13 @@ function NewsForm({ existingData, onClose }: { existingData?: NewsItem; onClose:
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden max-h-screen md:max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">
-              {existingData ? "Edit Berita" : "Tambah Berita Baru"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors"
-            >
+            <h2 className="text-xl font-semibold text-gray-800">{existingData ? "Edit Berita" : "Tambah Berita Baru"}</h2>
+            <button onClick={onClose} className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors">
               <FaTimes className="text-lg" />
             </button>
           </div>
         </div>
-        
+
         <div className="overflow-y-auto flex-grow p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -123,38 +118,38 @@ function NewsForm({ existingData, onClose }: { existingData?: NewsItem; onClose:
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Dibuat</label>
-                <input 
-                  type="date" 
-                  value={dateCreated} 
-                  onChange={(e) => setDateCreated(e.target.value)} 
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-                  required 
+                <input
+                  type="date"
+                  value={dateCreated}
+                  onChange={(e) => setDateCreated(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Penulis</label>
-                <input 
-                  type="text" 
-                  placeholder="Penulis" 
-                  value={writterNews} 
-                  onChange={(e) => setWritterNews(e.target.value)} 
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-                  required 
+                <input
+                  type="text"
+                  placeholder="Penulis"
+                  value={writterNews}
+                  onChange={(e) => setWritterNews(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Berita</label>
-                <select 
-                  value={categoryNews} 
-                  onChange={(e) => setCategoryNews(e.target.value)} 
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
+                <select
+                  value={categoryNews}
+                  onChange={(e) => setCategoryNews(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   required
                 >
                   <option value="Teknologi">Teknologi</option>
@@ -170,50 +165,42 @@ function NewsForm({ existingData, onClose }: { existingData?: NewsItem; onClose:
                 </select>
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-              <textarea 
-                placeholder="Deskripsi" 
-                value={descriptionNews} 
-                onChange={(e) => setDescriptionNews(e.target.value)} 
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
+              <textarea
+                placeholder="Deskripsi"
+                value={descriptionNews}
+                onChange={(e) => setDescriptionNews(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 rows={4}
-                required 
+                required
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Upload Gambar</label>
-              <input 
-                type="file" 
-                onChange={handleImageChange} 
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-                accept="image/*" 
+              <input
+                type="file"
+                onChange={handleImageChange}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                accept="image/*"
               />
             </div>
-            
+
             {previewUrl && (
               <div className="flex justify-center mt-4">
                 <div className="relative h-48 w-full rounded-lg overflow-hidden border-2 border-gray-300">
-                  <img 
-                    src={previewUrl} 
-                    alt="Preview" 
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                 </div>
               </div>
             )}
           </form>
         </div>
-        
+
         <div className="p-6 border-t border-gray-200 bg-gray-50">
           <div className="flex gap-3 justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-              disabled={loading}
-            >
+            <button onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" disabled={loading}>
               Batal
             </button>
             <button
@@ -226,7 +213,11 @@ function NewsForm({ existingData, onClose }: { existingData?: NewsItem; onClose:
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   Loading...
                 </>
-              ) : existingData ? "Update Berita" : "Tambah Berita"}
+              ) : existingData ? (
+                "Update Berita"
+              ) : (
+                "Tambah Berita"
+              )}
             </button>
           </div>
         </div>
@@ -251,20 +242,20 @@ export default function NewsManagement() {
 
   useEffect(() => {
     let filtered = news;
-    
+
     if (searchTerm) {
       filtered = filtered.filter(
         (item) =>
           item.titleNews.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.descriptionNews.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.writterNews.toLowerCase().includes(searchTerm.toLowerCase())
+          item.writterNews.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
-    
+
     if (categoryFilter !== "Semua") {
-      filtered = filtered.filter(item => item.categoryNews === categoryFilter);
+      filtered = filtered.filter((item) => item.categoryNews === categoryFilter);
     }
-    
+
     setFilteredNews(filtered);
   }, [searchTerm, categoryFilter, news]);
 
@@ -272,7 +263,7 @@ export default function NewsManagement() {
     try {
       const q = query(newsCollection, orderBy("dateCreated", "desc"));
       const data = await getDocs(q);
-      const newsData = data.docs.map((doc) => ({ ...doc.data(), id: doc.id } as NewsItem));
+      const newsData = data.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as NewsItem);
       setNews(newsData);
       setFilteredNews(newsData);
     } catch (error) {
@@ -285,7 +276,7 @@ export default function NewsManagement() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Apakah Anda yakin ingin menghapus berita ini?")) return;
-    
+
     try {
       await deleteDoc(doc(newsCollection, id));
       setNews(news.filter((item) => item.id !== id));
@@ -309,33 +300,33 @@ export default function NewsManagement() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
+    return date.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
   };
 
   const getCategoryColor = (category: string | undefined) => {
     const colors: Record<string, string> = {
-      'Teknologi': 'bg-blue-100 text-blue-800',
-      'Lifestyle': 'bg-pink-100 text-pink-800',
-      'Art': 'bg-purple-100 text-purple-800',
-      'Ekonomi': 'bg-green-100 text-green-800',
-      'Sejarah': 'bg-yellow-100 text-yellow-800',
-      'Pendidikan': 'bg-indigo-100 text-indigo-800',
-      'Olahraga': 'bg-red-100 text-red-800',
-      'Hiburan': 'bg-orange-100 text-orange-800',
-      'Hukum': 'bg-gray-100 text-gray-800',
-      'Politik': 'bg-teal-100 text-teal-800'
+      Teknologi: "bg-blue-100 text-blue-800",
+      Lifestyle: "bg-pink-100 text-pink-800",
+      Art: "bg-purple-100 text-purple-800",
+      Ekonomi: "bg-green-100 text-green-800",
+      Sejarah: "bg-yellow-100 text-yellow-800",
+      Pendidikan: "bg-indigo-100 text-indigo-800",
+      Olahraga: "bg-red-100 text-red-800",
+      Hiburan: "bg-orange-100 text-orange-800",
+      Hukum: "bg-gray-100 text-gray-800",
+      Politik: "bg-teal-100 text-teal-800",
     };
-    
-    return colors[category || 'Teknologi'] || 'bg-gray-100 text-gray-800';
+
+    return colors[category || "Teknologi"] || "bg-gray-100 text-gray-800";
   };
 
   return (
     <AdminLayout>
-      <div className="md:ml-[250px] min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -365,11 +356,11 @@ export default function NewsManagement() {
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
-              
+
               <div>
-                <select 
-                  value={categoryFilter} 
-                  onChange={(e) => setCategoryFilter(e.target.value)} 
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
                   className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 >
                   <option value="Semua">Semua Kategori</option>
@@ -387,13 +378,8 @@ export default function NewsManagement() {
               </div>
             </div>
 
-            {isFormOpen && (
-              <NewsForm
-                existingData={selectedNews}
-                onClose={handleCloseForm}
-              />
-            )}
-            
+            {isFormOpen && <NewsForm existingData={selectedNews} onClose={handleCloseForm} />}
+
             {loading ? (
               <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -403,13 +389,8 @@ export default function NewsManagement() {
                 <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
                   <FaSearch className="text-gray-500 text-xl" />
                 </div>
-                <p className="text-gray-500 text-lg">
-                  {searchTerm || categoryFilter !== "Semua" ? "Tidak ada hasil pencarian" : "Belum ada berita yang ditambahkan."}
-                </p>
-                <button
-                  onClick={() => setIsFormOpen(true)}
-                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                >
+                <p className="text-gray-500 text-lg">{searchTerm || categoryFilter !== "Semua" ? "Tidak ada hasil pencarian" : "Belum ada berita yang ditambahkan."}</p>
+                <button onClick={() => setIsFormOpen(true)} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                   Tambah Berita Pertama
                 </button>
               </div>
@@ -418,40 +399,26 @@ export default function NewsManagement() {
                 {filteredNews.map((item) => (
                   <div key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="h-48 overflow-hidden">
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.titleNews} 
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={item.imageUrl} alt={item.titleNews} className="w-full h-full object-cover" />
                     </div>
                     <div className="p-4">
                       <div className="flex justify-between items-start mb-2">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(item.categoryNews)}`}>
-                          {item.categoryNews}
-                        </span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(item.categoryNews)}`}>{item.categoryNews}</span>
                         <span className="text-xs text-gray-500">{formatDate(item.dateCreated)}</span>
                       </div>
-                      
+
                       <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">{item.titleNews}</h3>
-                      
+
                       <p className="text-sm text-gray-600 mb-3 line-clamp-3">{item.descriptionNews}</p>
-                      
+
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-500">Oleh: {item.writterNews}</span>
-                        
+
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEdit(item)}
-                            className="text-blue-600 hover:text-blue-900 p-1 transition-colors"
-                            title="Edit"
-                          >
+                          <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-900 p-1 transition-colors" title="Edit">
                             <FaEdit className="text-lg" />
                           </button>
-                          <button 
-                            onClick={() => handleDelete(item.id)}
-                            className="text-red-600 hover:text-red-900 p-1 transition-colors"
-                            title="Hapus"
-                          >
+                          <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900 p-1 transition-colors" title="Hapus">
                             <FaTrash className="text-lg" />
                           </button>
                         </div>
@@ -468,29 +435,20 @@ export default function NewsManagement() {
                   <div className="p-6 border-b border-gray-200">
                     <div className="flex justify-between items-center">
                       <h2 className="text-xl font-semibold text-gray-800">Detail Berita</h2>
-                      <button
-                        onClick={() => setSelectedNewsItem(null)}
-                        className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors"
-                      >
+                      <button onClick={() => setSelectedNewsItem(null)} className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors">
                         <FaTimes className="text-lg" />
                       </button>
                     </div>
                   </div>
                   <div className="p-6">
-                    <img 
-                      src={selectedNewsItem.imageUrl} 
-                      alt={selectedNewsItem.titleNews} 
-                      className="w-full h-64 object-cover rounded-lg mb-4"
-                    />
+                    <img src={selectedNewsItem.imageUrl} alt={selectedNewsItem.titleNews} className="w-full h-64 object-cover rounded-lg mb-4" />
                     <h1 className="text-2xl font-bold text-gray-800 mb-2">{selectedNewsItem.titleNews}</h1>
                     <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
                       <span>Oleh: {selectedNewsItem.writterNews}</span>
                       <span>•</span>
                       <span>{formatDate(selectedNewsItem.dateCreated)}</span>
                       <span>•</span>
-                      <span className={`px-2 py-1 rounded-full ${getCategoryColor(selectedNewsItem.categoryNews)}`}>
-                        {selectedNewsItem.categoryNews}
-                      </span>
+                      <span className={`px-2 py-1 rounded-full ${getCategoryColor(selectedNewsItem.categoryNews)}`}>{selectedNewsItem.categoryNews}</span>
                     </div>
                     <p className="text-gray-700 leading-relaxed">{selectedNewsItem.descriptionNews}</p>
                   </div>

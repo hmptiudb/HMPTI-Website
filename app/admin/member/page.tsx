@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { FaGithubSquare, FaInstagramSquare, FaEdit, FaTrash, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
-import { toast } from "react-toastify";
 import { membersCollection } from "@/lib/firebase";
-import { addDoc, doc, updateDoc, deleteDoc, getDocs, orderBy, query } from "firebase/firestore";
+import { addDoc, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { FaEdit, FaGithubSquare, FaInstagramSquare, FaPlus, FaSearch, FaTimes, FaTrash } from "react-icons/fa";
+import { toast } from "react-toastify";
 import { uploadToCloudinary } from "../../../app/api/upload";
 import AdminLayout from "../AdminLayout";
 
@@ -35,10 +35,10 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
 
   useEffect(() => {
     if (!image) return;
-    
+
     const objectUrl = URL.createObjectURL(image);
     setPreviewUrl(objectUrl);
-    
+
     return () => URL.revokeObjectURL(objectUrl);
   }, [image]);
 
@@ -47,7 +47,7 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
       setImage(null);
       return;
     }
-    
+
     setImage(e.target.files[0]);
   };
 
@@ -108,18 +108,13 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden max-h-screen md:max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">
-              {existingData ? "Edit Anggota" : "Tambah Anggota"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors"
-            >
+            <h2 className="text-xl font-semibold text-gray-800">{existingData ? "Edit Anggota" : "Tambah Anggota"}</h2>
+            <button onClick={onClose} className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors">
               <FaTimes className="text-lg" />
             </button>
           </div>
         </div>
-        
+
         <div className="overflow-y-auto flex-grow p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -135,7 +130,7 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
                   disabled={!!existingData}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
                 <input
@@ -148,7 +143,7 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Divisi</label>
@@ -168,7 +163,7 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
                   <option value="Humas">Humas</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
                 <select
@@ -184,7 +179,7 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
                 </select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status Kepengurusan</label>
@@ -198,7 +193,7 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
                   <option value="Tidak Aktif">Tidak Aktif</option>
                 </select>
               </div>
-              
+
               <div className="flex flex-col justify-end">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Upload Gambar</label>
                 <input
@@ -209,7 +204,7 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
               <input
@@ -221,7 +216,7 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
                 required
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Github</label>
               <input
@@ -233,28 +228,20 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
                 required
               />
             </div>
-            
+
             {previewUrl && (
               <div className="flex justify-center mt-4">
                 <div className="relative h-32 w-32 rounded-full overflow-hidden border-2 border-gray-300">
-                  <img 
-                    src={previewUrl} 
-                    alt="Preview" 
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                 </div>
               </div>
             )}
           </form>
         </div>
-        
+
         <div className="p-6 border-t border-gray-200 bg-gray-50">
           <div className="flex gap-3 justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-              disabled={loading}
-            >
+            <button onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" disabled={loading}>
               Batal
             </button>
             <button
@@ -267,7 +254,11 @@ function MemberForm({ existingData, onClose }: { existingData?: Member; onClose:
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   Loading...
                 </>
-              ) : existingData ? "Update Anggota" : "Tambah Anggota"}
+              ) : existingData ? (
+                "Update Anggota"
+              ) : (
+                "Tambah Anggota"
+              )}
             </button>
           </div>
         </div>
@@ -310,7 +301,7 @@ export default function MembersTable() {
         (member) =>
           member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           member.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          member.division?.toLowerCase().includes(searchTerm.toLowerCase())
+          member.division?.toLowerCase().includes(searchTerm.toLowerCase()),
       );
       setFilteredMembers(filtered);
     }
@@ -318,7 +309,7 @@ export default function MembersTable() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Apakah Anda yakin ingin menghapus anggota ini?")) return;
-    
+
     try {
       await deleteDoc(doc(membersCollection, id));
       setMembers(members.filter((member) => member.id !== id));
@@ -352,7 +343,7 @@ export default function MembersTable() {
 
   return (
     <AdminLayout>
-      <div className="md:ml-[250px] min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -373,10 +364,7 @@ export default function MembersTable() {
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   />
                 </div>
-                <button
-                  onClick={handleAddNew}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                >
+                <button onClick={handleAddNew} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                   <FaPlus className="text-sm" />
                   <span>Tambah Anggota</span>
                 </button>
@@ -392,13 +380,8 @@ export default function MembersTable() {
                 <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
                   <FaSearch className="text-gray-500 text-xl" />
                 </div>
-                <p className="text-gray-500 text-lg">
-                  {searchTerm ? "Tidak ada hasil pencarian" : "Belum ada data anggota."}
-                </p>
-                <button
-                  onClick={handleAddNew}
-                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                >
+                <p className="text-gray-500 text-lg">{searchTerm ? "Tidak ada hasil pencarian" : "Belum ada data anggota."}</p>
+                <button onClick={handleAddNew} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                   Tambah Anggota Pertama
                 </button>
               </div>
@@ -417,49 +400,69 @@ export default function MembersTable() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredMembers.map((member) => (
-                      <tr key={member.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
+                      <tr key={member.id} className="hover:bg-gray-50 transition-colors align-top">
+                        {/* Anggota */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            {/* Avatar */}
                             <div className="h-10 w-10 flex-shrink-0">
-                              <img className="h-10 w-10 rounded-full object-cover" src={member.imageUrl} alt={member.name} />
+                              {member.imageUrl ? (
+                                <img src={member.imageUrl} alt={member.name} className="h-10 w-10 rounded-full object-cover" />
+                              ) : (
+                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                                  {member.name?.charAt(0)}
+                                </div>
+                              )}
                             </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                              <div className="text-sm text-gray-500">{member.nim}</div>
+
+                            {/* Info */}
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">{member.name}</div>
+                              <div className="text-sm text-gray-500 truncate">{member.nim}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.division}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.position}</td>
+
+                        {/* Divisi */}
+                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{member.division || "-"}</td>
+
+                        {/* Jabatan */}
+                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{member.position || "-"}</td>
+
+                        {/* Status */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${member.status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          <span
+                            className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
+                              member.status === "Aktif" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                            }`}
+                          >
                             {member.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+
+                        {/* Social Media */}
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex gap-2">
-                            <Link href={member.linkInstagram} target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:text-pink-700 transition-colors">
-                              <FaInstagramSquare className="text-xl" />
-                            </Link>
-                            <Link href={member.linkGithub} target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-gray-900 transition-colors">
-                              <FaGithubSquare className="text-xl" />
-                            </Link>
+                            {member.linkInstagram && (
+                              <Link href={member.linkInstagram} target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:text-pink-700 transition-colors">
+                                <FaInstagramSquare className="text-xl" />
+                              </Link>
+                            )}
+                            {member.linkGithub && (
+                              <Link href={member.linkGithub} target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-gray-900 transition-colors">
+                                <FaGithubSquare className="text-xl" />
+                              </Link>
+                            )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+
+                        {/* Aksi */}
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => handleEdit(member)}
-                              className="text-blue-600 hover:text-blue-900 p-1 transition-colors"
-                              title="Edit"
-                            >
+                            <button onClick={() => handleEdit(member)} className="text-blue-600 hover:text-blue-900 p-1 transition-colors" title="Edit">
                               <FaEdit className="text-lg" />
                             </button>
-                            <button
-                              onClick={() => handleDelete(member.id)}
-                              className="text-red-600 hover:text-red-900 p-1 transition-colors"
-                              title="Hapus"
-                            >
+                            <button onClick={() => handleDelete(member.id)} className="text-red-600 hover:text-red-900 p-1 transition-colors" title="Hapus">
                               <FaTrash className="text-lg" />
                             </button>
                           </div>
@@ -473,12 +476,7 @@ export default function MembersTable() {
           </div>
         </div>
 
-        {isFormOpen && (
-          <MemberForm
-            existingData={selectedMember}
-            onClose={handleFormClose}
-          />
-        )}
+        {isFormOpen && <MemberForm existingData={selectedMember} onClose={handleFormClose} />}
       </div>
     </AdminLayout>
   );

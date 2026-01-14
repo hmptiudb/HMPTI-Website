@@ -1,28 +1,30 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 
 export default function TransitionLayout() {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(false);
+    }, 900); // durasi animasi
+
+    return () => clearTimeout(timer);
+  }, []); // ⬅️ hanya sekali saat Home mount
+
   return (
-    <div>
-      <motion.div
-        initial={{ x: "100%", height: "100%" }}
-        animate={{ x: "0%", height: "100%" }}
-        transition={{ duration: 0.9, ease: "easeInOut" }}
-        className="fixed  top-0 bottom-0 right-full w-[100%] h-full z-50 bg-[#374785]"
-      />
-      <motion.div
-        initial={{ x: "100%", height: "100%" }}
-        animate={{ x: "0%", height: "100%" }}
-        transition={{ delay: 0.2, duration: 0.9, ease: "easeInOut" }}
-        className="fixed  top-0 bottom-0 right-full w-screen h-full z-40 bg-black"
-      />
-      <motion.div
-        initial={{ x: "100%", height: "100%" }}
-        animate={{ x: "0%", height: "100%" }}
-        transition={{ delay: 0.4, duration: 0.9, ease: "easeInOut" }}
-        className="fixed  top-0 bottom-0 right-full w-screen h-full z-30 bg-white"
-      />
-    </div>
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ transform: "translateX(100%)" }}
+          animate={{ transform: "translateX(0%)" }}
+          exit={{ transform: "translateX(-100%)" }}
+          transition={{ duration: 0.7, ease: "easeInOut" }}
+          className="fixed inset-0 z-[9999] bg-[#374785] will-change-transform pointer-events-none"
+        />
+      )}
+    </AnimatePresence>
   );
 }

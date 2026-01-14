@@ -57,8 +57,6 @@ export default function ExecutiveViewHome() {
 
   return (
     <section className="relative w-full py-16 md:py-28 bg-gradient-to-b from-white to-gray-50 overflow-hidden">
-      {/* Background pattern */}
-      <div className="absolute inset-0 opacity-10 bg-[url('/assets/image/grid-pattern.svg')] bg-repeat bg-[length:80px_80px]"></div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
        {/* Section header */}

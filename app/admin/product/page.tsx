@@ -1,11 +1,11 @@
 "use client";
 import { uploadToCloudinary } from "@/app/api/upload";
 import { productsCollection } from "@/lib/firebase";
-import { addDoc, doc, updateDoc, deleteDoc, getDocs, orderBy, query } from "firebase/firestore";
+import { addDoc, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import { FaEdit, FaPlus, FaSearch, FaTimes, FaTrash, FaWhatsapp } from "react-icons/fa";
 import { toast } from "react-toastify";
 import AdminLayout from "../AdminLayout";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaTimes, FaWhatsapp, FaEye } from "react-icons/fa";
 
 interface Product {
   id: string;
@@ -28,10 +28,10 @@ function ProductForm({ existingData, onClose }: { existingData?: Product; onClos
 
   useEffect(() => {
     if (!image) return;
-    
+
     const objectUrl = URL.createObjectURL(image);
     setPreviewUrl(objectUrl);
-    
+
     return () => URL.revokeObjectURL(objectUrl);
   }, [image]);
 
@@ -40,7 +40,7 @@ function ProductForm({ existingData, onClose }: { existingData?: Product; onClos
       setImage(null);
       return;
     }
-    
+
     setImage(e.target.files[0]);
   };
 
@@ -95,18 +95,13 @@ function ProductForm({ existingData, onClose }: { existingData?: Product; onClos
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-screen md:max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">
-              {existingData ? "Edit Produk" : "Tambah Produk Baru"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors"
-            >
+            <h2 className="text-xl font-semibold text-gray-800">{existingData ? "Edit Produk" : "Tambah Produk Baru"}</h2>
+            <button onClick={onClose} className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors">
               <FaTimes className="text-lg" />
             </button>
           </div>
         </div>
-        
+
         <div className="overflow-y-auto flex-grow p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -121,7 +116,7 @@ function ProductForm({ existingData, onClose }: { existingData?: Product; onClos
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Harga Produk</label>
                 <input
@@ -134,7 +129,7 @@ function ProductForm({ existingData, onClose }: { existingData?: Product; onClos
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nomor WhatsApp</label>
               <input
@@ -146,7 +141,7 @@ function ProductForm({ existingData, onClose }: { existingData?: Product; onClos
                 required
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi Produk</label>
               <textarea
@@ -158,38 +153,30 @@ function ProductForm({ existingData, onClose }: { existingData?: Product; onClos
                 required
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Upload Gambar</label>
-              <input 
-                type="file" 
-                onChange={handleImageChange} 
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-                accept="image/*" 
+              <input
+                type="file"
+                onChange={handleImageChange}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                accept="image/*"
               />
             </div>
-            
+
             {previewUrl && (
               <div className="flex justify-center mt-4">
                 <div className="relative h-48 w-full rounded-lg overflow-hidden border-2 border-gray-300">
-                  <img 
-                    src={previewUrl} 
-                    alt="Preview" 
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                 </div>
               </div>
             )}
           </form>
         </div>
-        
+
         <div className="p-6 border-t border-gray-200 bg-gray-50">
           <div className="flex gap-3 justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-              disabled={loading}
-            >
+            <button onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" disabled={loading}>
               Batal
             </button>
             <button
@@ -202,7 +189,11 @@ function ProductForm({ existingData, onClose }: { existingData?: Product; onClos
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   Loading...
                 </>
-              ) : existingData ? "Update Produk" : "Tambah Produk"}
+              ) : existingData ? (
+                "Update Produk"
+              ) : (
+                "Tambah Produk"
+              )}
             </button>
           </div>
         </div>
@@ -229,9 +220,7 @@ export default function ProductManagement() {
       setFilteredProducts(products);
     } else {
       const filtered = products.filter(
-        (product) =>
-          product.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.descriptionProduct.toLowerCase().includes(searchTerm.toLowerCase())
+        (product) => product.productName.toLowerCase().includes(searchTerm.toLowerCase()) || product.descriptionProduct.toLowerCase().includes(searchTerm.toLowerCase()),
       );
       setFilteredProducts(filtered);
     }
@@ -241,7 +230,7 @@ export default function ProductManagement() {
     try {
       const q = query(productsCollection, orderBy("dateCreated", "desc"));
       const data = await getDocs(q);
-      const productsData = data.docs.map((doc) => ({ ...doc.data(), id: doc.id } as Product));
+      const productsData = data.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Product);
       setProducts(productsData);
       setFilteredProducts(productsData);
     } catch (error) {
@@ -254,7 +243,7 @@ export default function ProductManagement() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Apakah Anda yakin ingin menghapus produk ini?")) return;
-    
+
     try {
       await deleteDoc(doc(productsCollection, id));
       setProducts(products.filter((product) => product.id !== id));
@@ -277,21 +266,21 @@ export default function ProductManagement() {
   };
 
   const formatPrice = (price: string) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
     }).format(Number(price));
   };
 
   const openWhatsApp = (number: string) => {
-    const formattedNumber = number.replace(/[^0-9]/g, '');
-    window.open(`https://wa.me/${formattedNumber}`, '_blank');
+    const formattedNumber = number.replace(/[^0-9]/g, "");
+    window.open(`https://wa.me/${formattedNumber}`, "_blank");
   };
 
   return (
     <AdminLayout>
-      <div className="md:ml-[250px] min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -322,13 +311,8 @@ export default function ProductManagement() {
               </div>
             </div>
 
-            {isFormOpen && (
-              <ProductForm
-                existingData={selectedProduct}
-                onClose={handleCloseForm}
-              />
-            )}
-            
+            {isFormOpen && <ProductForm existingData={selectedProduct} onClose={handleCloseForm} />}
+
             {loading ? (
               <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -338,13 +322,8 @@ export default function ProductManagement() {
                 <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
                   <FaSearch className="text-gray-500 text-xl" />
                 </div>
-                <p className="text-gray-500 text-lg">
-                  {searchTerm ? "Tidak ada hasil pencarian" : "Belum ada produk yang ditambahkan."}
-                </p>
-                <button
-                  onClick={() => setIsFormOpen(true)}
-                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                >
+                <p className="text-gray-500 text-lg">{searchTerm ? "Tidak ada hasil pencarian" : "Belum ada produk yang ditambahkan."}</p>
+                <button onClick={() => setIsFormOpen(true)} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                   Tambah Produk Pertama
                 </button>
               </div>
@@ -353,20 +332,15 @@ export default function ProductManagement() {
                 {filteredProducts.map((product) => (
                   <div key={product.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="h-48 overflow-hidden">
-                      <img 
-                        src={product.imageUrl} 
-                        alt={product.productName} 
-                        className="w-full h-full object-cover cursor-pointer"
-                        onClick={() => setSelectedProductItem(product)}
-                      />
+                      <img src={product.imageUrl} alt={product.productName} className="w-full h-full object-cover cursor-pointer" onClick={() => setSelectedProductItem(product)} />
                     </div>
                     <div className="p-4">
                       <h3 className="font-semibold text-gray-800 mb-2 line-clamp-1">{product.productName}</h3>
-                      
+
                       <p className="text-lg font-bold text-blue-600 mb-2">{formatPrice(product.priceProduct)}</p>
-                      
+
                       <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.descriptionProduct}</p>
-                      
+
                       <div className="flex justify-between items-center">
                         <button
                           onClick={() => openWhatsApp(product.whatsappNumber)}
@@ -376,20 +350,12 @@ export default function ProductManagement() {
                           <FaWhatsapp className="text-base" />
                           <span>Hubungi</span>
                         </button>
-                        
+
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEdit(product)}
-                            className="text-blue-600 hover:text-blue-900 p-1 transition-colors"
-                            title="Edit"
-                          >
+                          <button onClick={() => handleEdit(product)} className="text-blue-600 hover:text-blue-900 p-1 transition-colors" title="Edit">
                             <FaEdit className="text-lg" />
                           </button>
-                          <button 
-                            onClick={() => handleDelete(product.id)}
-                            className="text-red-600 hover:text-red-900 p-1 transition-colors"
-                            title="Hapus"
-                          >
+                          <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1 transition-colors" title="Hapus">
                             <FaTrash className="text-lg" />
                           </button>
                         </div>
@@ -406,20 +372,13 @@ export default function ProductManagement() {
                   <div className="p-6 border-b border-gray-200">
                     <div className="flex justify-between items-center">
                       <h2 className="text-xl font-semibold text-gray-800">Detail Produk</h2>
-                      <button
-                        onClick={() => setSelectedProductItem(null)}
-                        className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors"
-                      >
+                      <button onClick={() => setSelectedProductItem(null)} className="text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors">
                         <FaTimes className="text-lg" />
                       </button>
                     </div>
                   </div>
                   <div className="p-6">
-                    <img 
-                      src={selectedProductItem.imageUrl} 
-                      alt={selectedProductItem.productName} 
-                      className="w-full h-64 object-cover rounded-lg mb-4"
-                    />
+                    <img src={selectedProductItem.imageUrl} alt={selectedProductItem.productName} className="w-full h-64 object-cover rounded-lg mb-4" />
                     <h1 className="text-2xl font-bold text-gray-800 mb-2">{selectedProductItem.productName}</h1>
                     <p className="text-2xl font-bold text-blue-600 mb-4">{formatPrice(selectedProductItem.priceProduct)}</p>
                     <p className="text-gray-700 leading-relaxed mb-6">{selectedProductItem.descriptionProduct}</p>

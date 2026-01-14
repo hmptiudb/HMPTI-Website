@@ -70,43 +70,32 @@ export default function StrukturViewHome() {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          whileInView={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.5 }} 
-          viewport={{ once: true }} 
-          className="text-center mb-16"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} viewport={{ once: true }} className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-100 mb-6">
             <IoPeopleCircleOutline className="text-blue-500" />
             <span className="text-sm font-medium text-blue-700">Struktur Organisasi</span>
           </div>
-          
+
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-            Tim Pengurus{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">
-              HMPTI
-            </span>
+            Tim Pengurus <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">HMPTI</span>
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Tim profesional yang membangun dan mengembangkan HMPTI Universitas Duta Bangsa
-          </p>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">Tim profesional yang membangun dan mengembangkan HMPTI Universitas Duta Bangsa</p>
         </motion.div>
 
         {/* Leader card - centered at the top */}
         {leader && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, transform: "translateY(-20px)" }}
+            whileInView={{ opacity: 1, transform: "translateY(0px)" }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
             className="flex justify-center mb-16"
           >
             <div className="w-full max-w-full md:max-w-[470px] group">
-              <div className="h-full bg-white rounded-xl shadow-xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col">
+              <div className="h-full bg-white rounded-xl shadow-xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 will-change-transform flex flex-col">
                 <div className={`aspect-square bg-gradient-to-r ${leader.color} relative overflow-hidden`}>
                   <div
-                    className="w-full h-full bg-cover bg-center opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                    className="w-full h-full bg-cover bg-center opacity-90 group-hover:scale-[1.04] transition-transform duration-500"
                     style={{
                       backgroundImage: `url(${leader.image})`,
                       backgroundSize: "contain",
@@ -134,11 +123,11 @@ export default function StrukturViewHome() {
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            transition={{ staggerChildren: 0.1 }}
+            transition={{ staggerChildren: 0.08 }}
             viewport={{ once: true }}
           >
-            {regularMembers.slice(0, 3).map((member, index) => (
-              <motion.div key={index} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="group">
+            {regularMembers.slice(0, 3).map((member) => (
+              <motion.div key={member.name} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="group">
                 <div className="h-full bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2 flex flex-col">
                   <div className={`aspect-square bg-gradient-to-r ${member.color} relative overflow-hidden`}>
                     <div
@@ -168,11 +157,17 @@ export default function StrukturViewHome() {
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            transition={{ staggerChildren: 0.1 }}
+            transition={{ staggerChildren: 0.08 }}
             viewport={{ once: true }}
           >
             {regularMembers.slice(3, 6).map((member, index) => (
-              <motion.div key={index + 3} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="group">
+              <motion.div
+                key={index + 3}
+                initial={{ opacity: 0, transform: "translateY(30px)" }}
+                whileInView={{ opacity: 1, transform: "translateY(0px)" }}
+                transition={{ duration: 0.5 }}
+                className="group"
+              >
                 <div className="h-full bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2 flex flex-col">
                   <div className={`aspect-square bg-gradient-to-r ${member.color} relative overflow-hidden`}>
                     <div

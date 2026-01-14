@@ -5,8 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { FiArrowRight, FiCalendar, FiChevronLeft, FiChevronRight, FiUser, FiExternalLink } from "react-icons/fi";
-import { IoSparkles, IoNewspaperOutline } from "react-icons/io5";
+import { FiArrowRight, FiCalendar, FiChevronLeft, FiChevronRight, FiExternalLink, FiUser } from "react-icons/fi";
+import { IoNewspaperOutline } from "react-icons/io5";
 
 interface NewsItem {
   id: string;
@@ -25,6 +25,7 @@ export default function NewsViewHome() {
   const [direction, setDirection] = useState(1);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -48,13 +49,11 @@ export default function NewsViewHome() {
   }, []);
 
   useEffect(() => {
-    if (news.length > 1 && isAutoPlaying && !isHovered) {
-      const interval = setInterval(() => {
-        handleNext();
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [news, isAutoPlaying, isHovered]);
+    if (news.length <= 1 || !isAutoPlaying || isHovered || !isVisible) return;
+
+    const interval = setInterval(handleNext, 5000);
+    return () => clearInterval(interval);
+  }, [news.length, isAutoPlaying, isHovered, isVisible]);
 
   const handlePrev = () => {
     setDirection(-1);
@@ -71,10 +70,10 @@ export default function NewsViewHome() {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
+      return date.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
       });
     } catch {
       return dateString;
@@ -83,47 +82,46 @@ export default function NewsViewHome() {
 
   const variants = {
     enter: (direction: number) => ({
-      x: direction > 0 ? 1000 : -1000,
+      transform: `translateX(${direction > 0 ? "100%" : "-100%"})`,
       opacity: 0,
-      scale: 0.95,
+      scale: 0.96,
     }),
     center: {
-      x: 0,
+      transform: "translateX(0%)",
       opacity: 1,
       scale: 1,
     },
     exit: (direction: number) => ({
-      x: direction < 0 ? 1000 : -1000,
+      transform: `translateX(${direction < 0 ? "100%" : "-100%"})`,
       opacity: 0,
-      scale: 0.95,
+      scale: 0.96,
     }),
   };
 
   const getCategoryColor = (category: string | undefined) => {
     const colors: Record<string, string> = {
-      'Teknologi': 'bg-blue-100 text-blue-800',
-      'Lifestyle': 'bg-pink-100 text-pink-800',
-      'Art': 'bg-purple-100 text-purple-800',
-      'Ekonomi': 'bg-green-100 text-green-800',
-      'Sejarah': 'bg-yellow-100 text-yellow-800',
-      'Pendidikan': 'bg-indigo-100 text-indigo-800',
-      'Olahraga': 'bg-red-100 text-red-800',
-      'Hiburan': 'bg-orange-100 text-orange-800',
-      'Hukum': 'bg-gray-100 text-gray-800',
-      'Politik': 'bg-teal-100 text-teal-800'
+      Teknologi: "bg-blue-100 text-blue-800",
+      Lifestyle: "bg-pink-100 text-pink-800",
+      Art: "bg-purple-100 text-purple-800",
+      Ekonomi: "bg-green-100 text-green-800",
+      Sejarah: "bg-yellow-100 text-yellow-800",
+      Pendidikan: "bg-indigo-100 text-indigo-800",
+      Olahraga: "bg-red-100 text-red-800",
+      Hiburan: "bg-orange-100 text-orange-800",
+      Hukum: "bg-gray-100 text-gray-800",
+      Politik: "bg-teal-100 text-teal-800",
     };
-    
-    return colors[category || 'Teknologi'] || 'bg-gray-100 text-gray-800';
+
+    return colors[category || "Teknologi"] || "bg-gray-100 text-gray-800";
   };
 
   return (
     <section className="relative w-full py-20 md:py-32 bg-gradient-to-br from-gray-50 via-white to-blue-50/30 overflow-hidden">
-      
       {/* Background elements */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Animated grid pattern */}
         <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2QxZDVmMSIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=')]"></div>
-        
+
         {/* Floating shapes */}
         <motion.div
           className="absolute top-20 left-20 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl"
@@ -134,10 +132,10 @@ export default function NewsViewHome() {
           transition={{
             duration: 8,
             repeat: Infinity,
-            ease: "easeInOut"
+            ease: "easeInOut",
           }}
         />
-        
+
         <motion.div
           className="absolute bottom-20 right-20 w-80 h-80 bg-cyan-300/15 rounded-full blur-3xl"
           animate={{
@@ -147,34 +145,29 @@ export default function NewsViewHome() {
           transition={{
             duration: 10,
             repeat: Infinity,
-            ease: "easeInOut"
+            ease: "easeInOut",
           }}
         />
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section header */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          whileInView={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.5 }} 
-          viewport={{ once: true }} 
+        <motion.div
+          initial={{ opacity: 0, transform: "translateY(20px)" }}
+          whileInView={{ opacity: 1, transform: "translateY(0px)" }}
+          transition={{ duration: 0.5 }}
+          viewport={{ once: true }}
           className="text-center mb-16"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-100 mb-6">
             <IoNewspaperOutline className="text-blue-500" />
             <span className="text-sm font-medium text-blue-700">Berita Terbaru</span>
           </div>
-          
+
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">
-              Update Terkini
-            </span>{' '}
-            HMPTI
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Update Terkini</span> HMPTI
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Kegiatan, prestasi, dan informasi terbaru dari Himpunan Mahasiswa Teknik Informatika
-          </p>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">Kegiatan, prestasi, dan informasi terbaru dari Himpunan Mahasiswa Teknik Informatika</p>
         </motion.div>
 
         {/* News carousel */}
@@ -201,23 +194,16 @@ export default function NewsViewHome() {
                     animate="center"
                     exit="exit"
                     transition={{
-                      x: { type: "spring", stiffness: 300, damping: 30 },
-                      opacity: { duration: 0.3 },
-                      scale: { duration: 0.3 },
+                      duration: 0.5,
+                      ease: "easeInOut",
                     }}
-                    className="absolute inset-0 flex flex-col lg:flex-row"
+                    className="absolute inset-0 flex flex-col lg:flex-row will-change-transform"
                   >
                     {/* News image */}
                     <div className="w-full lg:w-1/2 h-72 lg:h-full relative">
-                      <Image 
-                        src={news[currentIndex].imageUrl} 
-                        alt={news[currentIndex].titleNews} 
-                        fill 
-                        className="object-cover" 
-                        priority 
-                      />
+                      <Image src={news[currentIndex].imageUrl} alt={news[currentIndex].titleNews} fill className="object-cover" priority={false} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent lg:bg-gradient-to-r lg:from-black/20 lg:via-transparent lg:to-transparent"></div>
-                      
+
                       {/* Category badge */}
                       <div className="absolute top-6 left-6">
                         {news[currentIndex].categoryNews && (
@@ -241,16 +227,12 @@ export default function NewsViewHome() {
                         </span>
                       </div>
 
-                      <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4 leading-tight">
-                        {news[currentIndex].titleNews}
-                      </h3>
+                      <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4 leading-tight">{news[currentIndex].titleNews}</h3>
 
-                      <p className="text-gray-600 mb-6 line-clamp-4 leading-relaxed">
-                        {news[currentIndex].descriptionNews}
-                      </p>
+                      <p className="text-gray-600 mb-6 line-clamp-4 leading-relaxed">{news[currentIndex].descriptionNews}</p>
 
-                      <Link 
-                        href={`/pages/news/${news[currentIndex].id}`} 
+                      <Link
+                        href={`/pages/news/${news[currentIndex].id}`}
                         className="inline-flex items-center gap-2 text-blue-600 font-medium hover:text-blue-700 transition-colors group/link"
                       >
                         Baca Selengkapnya
@@ -287,11 +269,7 @@ export default function NewsViewHome() {
                         setDirection(index > currentIndex ? 1 : -1);
                         setCurrentIndex(index);
                       }}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        currentIndex === index 
-                          ? "bg-blue-600 w-6" 
-                          : "bg-gray-300 hover:bg-gray-400"
-                      }`}
+                      className={`w-2 h-2 rounded-full transition-all ${currentIndex === index ? "bg-blue-600 w-6" : "bg-gray-300 hover:bg-gray-400"}`}
                       aria-label={`Go to news ${index + 1}`}
                     />
                   ))}
@@ -299,9 +277,9 @@ export default function NewsViewHome() {
               )}
             </>
           ) : (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+            <motion.div
+              initial={{ opacity: 0, transform: "translateY(20px)" }}
+              whileInView={{ opacity: 1, transform: "translateY(0px)" }}
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
               className="bg-white rounded-2xl shadow-xl p-12 text-center border border-gray-100"
@@ -317,8 +295,8 @@ export default function NewsViewHome() {
 
         {/* CTA section */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, transform: "translateY(20px)" }}
+          whileInView={{ opacity: 1, transform: "translateY(0px)" }}
           transition={{ duration: 0.5, delay: 0.3 }}
           viewport={{ once: true }}
           className="text-center mt-16"
