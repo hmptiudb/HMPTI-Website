@@ -9,7 +9,7 @@ import TransitionLayout from "@/components/TransitionLayout";
 
 export default function Home() {
   return (
-    <        >
+    <>
       <TransitionLayout />
       <HeroViewHome />
       <ActivityViewHome />
