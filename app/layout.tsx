@@ -1,22 +1,40 @@
-// app/layout.tsx
-import Footer from "@/components/Footer";
-import Navbar from "@/components/Navbar";
-import React from "react";
-import "tailwindcss/tailwind.css";
 import type { Metadata } from "next";
 
+import ConditionalLayout from "@/components/ConditionalLayout";
+
+import "./globals.css";
+
+
+// =========================================================
+// METADATA
+// =========================================================
+
 export const metadata: Metadata = {
-  title: "HMPTI | UDB",
-  description: "Himpunan Mahasiswa Prodi Teknik Informatika Universitas Duta Bangsa",
+  title: {
+    default: "HMPTI Universitas Duta Bangsa",
+    template: "%s | HMPTI",
+  },
+
+  description:
+    "Website resmi Himpunan Mahasiswa Program Studi Teknik Informatika Universitas Duta Bangsa.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+
+// =========================================================
+// ROOT LAYOUT
+// =========================================================
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>
-        <Navbar />
-        {children}
-        <Footer />
+    <html lang="id">
+      <body>
+        <ConditionalLayout>
+          {children}
+        </ConditionalLayout>
       </body>
     </html>
   );

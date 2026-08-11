@@ -1,296 +1,1749 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
-import { FiArrowLeft, FiArrowRight, FiCalendar, FiUsers } from "react-icons/fi";
-import { IoSparkles } from "react-icons/io5";
 
-interface Event {
+import {
+  AnimatePresence,
+  MotionConfig,
+  motion,
+} from "framer-motion";
+
+import Image from "next/image";
+import Link from "next/link";
+
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  FiArrowRight,
+  FiChevronLeft,
+  FiChevronRight,
+  FiCode,
+  FiTarget,
+  FiUsers,
+} from "react-icons/fi";
+
+import {
+  IoSparkles,
+} from "react-icons/io5";
+
+
+// =========================================================
+// TYPES
+// =========================================================
+
+interface ActivityItem {
   id: string;
   eventName: string;
   imageUrl: string;
   descriptionEvent: string;
   statusEvent?: string;
-  linkForm: string;
   categoryAudiens?: string;
   categoryEvent?: string;
 }
 
-export default function ActivityViewHome() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
-  const [direction, setDirection] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
 
-  // Data statis event
-  const staticEvents: Event[] = [
-    {
-      id: "1",
-      eventName: "SIBARMATI",
-      imageUrl: "/assets/image/sibarmati.png",
-      descriptionEvent: "Seminar dan Workshop Teknologi Informasi",
-      statusEvent: "active",
-      linkForm: "#",
-      categoryAudiens: "Mahasiswa",
-      categoryEvent: "Seminar",
-    },
-    {
-      id: "2",
-      eventName: "FESTI",
-      imageUrl: "/assets/image/festii.png",
-      descriptionEvent: "Festival Teknologi dan Inovasi",
-      statusEvent: "upcoming",
-      linkForm: "#",
-      categoryAudiens: "Umum",
-      categoryEvent: "Festival",
-    },
-    {
-      id: "3",
-      eventName: "NGOBAR",
-      imageUrl: "/assets/image/ngobar.png",
-      descriptionEvent: "Ngoding Bareng",
-      statusEvent: "upcoming",
-      linkForm: "#",
-      categoryAudiens: "Umum",
-      categoryEvent: "Workshop",
-    },
-  ];
+// =========================================================
+// CONSTANTS
+// =========================================================
+
+const AUTO_PLAY_DELAY = 5500;
+
+
+const activities: ActivityItem[] = [
+  {
+    id: "1",
+    eventName: "SIBARMATI",
+    imageUrl:
+      "/assets/image/sibarmati.png",
+    descriptionEvent:
+      "Seminar dan Workshop Teknologi Informasi",
+    statusEvent:
+      "active",
+    categoryAudiens:
+      "Mahasiswa",
+    categoryEvent:
+      "Seminar",
+  },
+
+  {
+    id: "2",
+    eventName: "FESTI",
+    imageUrl:
+      "/assets/image/festii.png",
+    descriptionEvent:
+      "Festival Teknologi dan Inovasi",
+    statusEvent:
+      "upcoming",
+    categoryAudiens:
+      "Umum",
+    categoryEvent:
+      "Festival",
+  },
+
+  {
+    id: "3",
+    eventName: "NGOBAR",
+    imageUrl:
+      "/assets/image/ngobar.png",
+    descriptionEvent:
+      "Ngoding Bareng",
+    statusEvent:
+      "upcoming",
+    categoryAudiens:
+      "Umum",
+    categoryEvent:
+      "Workshop",
+  },
+];
+
+
+const ACTIVITY_BENEFITS = [
+  {
+    icon: FiCode,
+    title:
+      "Kompetensi",
+    description:
+      "Mengembangkan kemampuan teknis melalui kegiatan yang relevan dengan dunia teknologi.",
+  },
+
+  {
+    icon: FiTarget,
+    title:
+      "Pengalaman",
+    description:
+      "Memberikan pengalaman baru melalui seminar, workshop, festival, dan kegiatan kolaboratif.",
+  },
+
+  {
+    icon: FiUsers,
+    title:
+      "Kolaborasi",
+    description:
+      "Membuka ruang untuk bertemu, berdiskusi, dan berkembang bersama mahasiswa lainnya.",
+  },
+];
+
+
+// =========================================================
+// MOTION
+// =========================================================
+
+const slideVariants = {
+  enter: (
+    direction: number,
+  ) => ({
+    opacity: 0,
+
+    x:
+      direction > 0
+        ? 32
+        : -32,
+
+    scale: 0.985,
+  }),
+
+  center: {
+    opacity: 1,
+    x: 0,
+    scale: 1,
+  },
+
+  exit: (
+    direction: number,
+  ) => ({
+    opacity: 0,
+
+    x:
+      direction < 0
+        ? 32
+        : -32,
+
+    scale: 0.985,
+  }),
+};
+
+
+// =========================================================
+// STATUS
+// =========================================================
+
+function getStatusLabel(
+  status?: string,
+) {
+  switch (
+    status
+      ?.trim()
+      .toLowerCase()
+  ) {
+    case "active":
+      return "Sedang Berjalan";
+
+    case "upcoming":
+      return "Akan Datang";
+
+    case "finished":
+      return "Selesai";
+
+    default:
+      return "Program HMPTI";
+  }
+}
+
+
+function getStatusClass(
+  status?: string,
+) {
+  switch (
+    status
+      ?.trim()
+      .toLowerCase()
+  ) {
+    case "active":
+      return `
+        border-emerald-100
+        bg-emerald-50
+        text-emerald-700
+      `;
+
+    case "upcoming":
+      return `
+        border-amber-100
+        bg-amber-50
+        text-amber-700
+      `;
+
+    case "finished":
+      return `
+        border-gray-200
+        bg-gray-100
+        text-gray-600
+      `;
+
+    default:
+      return `
+        border-blue-100
+        bg-blue-50
+        text-blue-700
+      `;
+  }
+}
+
+
+// =========================================================
+// MAIN COMPONENT
+// =========================================================
+
+export default function ActivityViewHome() {
+  const sectionRef =
+    useRef<HTMLElement | null>(
+      null,
+    );
+
+
+  const [
+    currentIndex,
+    setCurrentIndex,
+  ] = useState(0);
+
+
+  const [
+    direction,
+    setDirection,
+  ] = useState(1);
+
+
+  const [
+    isPaused,
+    setIsPaused,
+  ] = useState(false);
+
+
+  const [
+    isVisible,
+    setIsVisible,
+  ] = useState(false);
+
+
+  const currentActivity =
+    activities[
+      currentIndex
+    ];
+
+
+  // =======================================================
+  // VISIBILITY
+  // =======================================================
 
   useEffect(() => {
-    // Gunakan data statis
-    setEvents(staticEvents);
+    const element =
+      sectionRef.current;
+
+
+    if (!element) {
+      return;
+    }
+
+
+    const observer =
+      new IntersectionObserver(
+        (
+          entries,
+        ) => {
+          setIsVisible(
+            entries[0]
+              ?.isIntersecting ??
+              false,
+          );
+        },
+        {
+          threshold: 0.2,
+        },
+      );
+
+
+    observer.observe(
+      element,
+    );
+
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
+
+  // =======================================================
+  // AUTOPLAY
+  // =======================================================
+
   useEffect(() => {
-    if (!events.length || isHovered || !isVisible) return;
+    if (
+      activities.length <= 1 ||
+      isPaused ||
+      !isVisible
+    ) {
+      return;
+    }
 
-    const interval = setInterval(() => {
-      setDirection(1);
-      setCurrentIndex((prev) => (prev + 1) % events.length);
-    }, 5000);
 
-    return () => clearInterval(interval);
-  }, [events.length, isHovered, isVisible]);
+    const interval =
+      window.setInterval(
+        () => {
+          setDirection(
+            1,
+          );
 
-  const nextSlide = () => {
-    setDirection(1);
-    setCurrentIndex((prev) => (prev + 1) % events.length);
+
+          setCurrentIndex(
+            (
+              previous,
+            ) =>
+              (
+                previous +
+                1
+              ) %
+              activities.length,
+          );
+        },
+        AUTO_PLAY_DELAY,
+      );
+
+
+    return () => {
+      window.clearInterval(
+        interval,
+      );
+    };
+  }, [
+    isPaused,
+    isVisible,
+  ]);
+
+
+  // =======================================================
+  // PREVIOUS
+  // =======================================================
+
+  const previousSlide =
+    () => {
+      setDirection(
+        -1,
+      );
+
+
+      setCurrentIndex(
+        (
+          previous,
+        ) =>
+          (
+            previous -
+            1 +
+            activities.length
+          ) %
+          activities.length,
+      );
+    };
+
+
+  // =======================================================
+  // NEXT
+  // =======================================================
+
+  const nextSlide =
+    () => {
+      setDirection(
+        1,
+      );
+
+
+      setCurrentIndex(
+        (
+          previous,
+        ) =>
+          (
+            previous +
+            1
+          ) %
+          activities.length,
+      );
+    };
+
+
+  // =======================================================
+  // SELECT
+  // =======================================================
+
+  const selectSlide = (
+    index: number,
+  ) => {
+    if (
+      index ===
+      currentIndex
+    ) {
+      return;
+    }
+
+
+    setDirection(
+      index >
+        currentIndex
+        ? 1
+        : -1,
+    );
+
+
+    setCurrentIndex(
+      index,
+    );
   };
 
-  const prevSlide = () => {
-    setDirection(-1);
-    setCurrentIndex((prev) => (prev - 1 + events.length) % events.length);
-  };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
-
-  const slideVariants = {
-    enter: (direction: number) => ({
-      transform: `translateX(${direction > 0 ? "100%" : "-100%"})`,
-      opacity: 0,
-    }),
-    center: {
-      transform: "translateX(0%)",
-      opacity: 1,
-    },
-    exit: (direction: number) => ({
-      transform: `translateX(${direction < 0 ? "100%" : "-100%"})`,
-      opacity: 0,
-    }),
-  };
+  // =======================================================
+  // RENDER
+  // =======================================================
 
   return (
-    <section className="relative w-full py-20 md:py-32 bg-gradient-to-br from-gray-50 via-white to-blue-50/30 overflow-hidden">
-      {/* Background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Animated grid pattern */}
-        <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2QxZDVmMSIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=')]"></div>
+    <MotionConfig reducedMotion="user">
+      <section
+        ref={
+          sectionRef
+        }
+        className="
+          relative
+          w-full
+          scroll-mt-20
+          overflow-hidden
+          bg-white
+          px-4
+          pb-[calc(4rem+env(safe-area-inset-bottom))]
+          pt-14
 
-        {/* Floating shapes */}
-        <motion.div
-          className="absolute top-20 right-20 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          viewport={{ once: false }}
-        />
+          sm:px-6
+          sm:py-16
 
-        <motion.div
-          className="absolute bottom-20 left-20 w-80 h-80 bg-cyan-300/15 rounded-full blur-3xl"
-          animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.4, 0.2, 0.4],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          viewport={{ once: false }}
-        />
-      </div>
+          lg:px-8
+          lg:py-20
+        "
+      >
+        {/* =========================================
+            BACKGROUND
+        ========================================== */}
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Section header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} viewport={{ once: true }} className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-100 mb-6">
-            <IoSparkles className="text-blue-500" />
-            <span className="text-sm font-medium text-blue-700">Program Unggulan</span>
+        <div
+          aria-hidden="true"
+          className="
+            pointer-events-none
+            absolute
+            inset-0
+            overflow-hidden
+          "
+        >
+          <div
+            className="
+              absolute
+              inset-0
+              bg-gradient-to-br
+              from-white
+              via-gray-50/60
+              to-blue-50/40
+            "
+          />
+
+
+          <div
+            className="
+              absolute
+              inset-0
+              opacity-[0.055]
+              bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2QxZDVmMSIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=')]
+            "
+          />
+
+
+          <div
+            className="
+              absolute
+              -left-28
+              top-20
+              hidden
+              h-80
+              w-80
+              rounded-full
+              bg-blue-200/20
+              blur-3xl
+
+              md:block
+            "
+          />
+
+
+          <div
+            className="
+              absolute
+              -bottom-32
+              right-0
+              hidden
+              h-96
+              w-96
+              rounded-full
+              bg-cyan-200/15
+              blur-3xl
+
+              md:block
+            "
+          />
+        </div>
+
+
+        {/* =========================================
+            CONTAINER
+        ========================================== */}
+
+        <div
+          className="
+            relative
+            z-10
+            mx-auto
+            w-full
+            max-w-7xl
+          "
+        >
+          {/* =======================================
+              HEADER
+          ======================================== */}
+
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 18,
+            }}
+            whileInView={{
+              opacity: 1,
+              y: 0,
+            }}
+            viewport={{
+              once: true,
+              amount: 0.15,
+            }}
+            transition={{
+              duration: 0.5,
+            }}
+            className="
+              mx-auto
+              mb-8
+              max-w-3xl
+              text-center
+
+              min-[400px]:mb-10
+
+              sm:mb-12
+
+              lg:mb-14
+            "
+          >
+            <div
+              className="
+                mb-4
+                inline-flex
+                items-center
+                gap-2
+                rounded-full
+                border
+                border-blue-100
+                bg-blue-50
+                px-3.5
+                py-2
+
+                sm:mb-5
+                sm:px-4
+              "
+            >
+
+
+              <span
+                className="
+                  text-[11px]
+                  font-semibold
+                  text-blue-700
+
+                  sm:text-sm
+                "
+              >
+                Program Unggulan
+              </span>
+            </div>
+
+
+            <h2
+              className="
+                text-[1.8rem]
+                font-bold
+                leading-tight
+                tracking-tight
+                text-gray-950
+
+                min-[400px]:text-3xl
+
+                sm:text-4xl
+
+                lg:text-5xl
+              "
+            >
+              Temukan{" "}
+
+              <span
+                className="
+                  bg-gradient-to-r
+                  from-blue-600
+                  to-cyan-500
+                  bg-clip-text
+                  text-transparent
+                "
+              >
+                Aktivitas
+              </span>
+
+              {" HMPTI"}
+            </h2>
+
+
+            <p
+              className="
+                mx-auto
+                mt-4
+                max-w-2xl
+                text-[13px]
+                leading-6
+                text-gray-600
+
+                sm:text-base
+                sm:leading-7
+
+                md:text-lg
+                md:leading-8
+              "
+            >
+              Program yang dirancang sebagai
+              ruang belajar, berkolaborasi, dan
+              mengembangkan pengalaman mahasiswa
+              Teknik Informatika.
+            </p>
+          </motion.div>
+
+
+          {/* =======================================
+              PROGRAM NAVIGATION
+          ======================================== */}
+
+          <div
+            className="
+              mb-6
+              flex
+              w-full
+              justify-center
+
+              sm:mb-8
+            "
+          >
+            <div
+              className="
+                flex
+                max-w-full
+                items-center
+                gap-1
+                overflow-x-auto
+                rounded-2xl
+                border
+                border-gray-200
+                bg-white/80
+                p-1.5
+                shadow-sm
+                backdrop-blur-md
+
+                [scrollbar-width:none]
+
+                [&::-webkit-scrollbar]:hidden
+              "
+            >
+              {activities.map(
+                (
+                  activity,
+                  index,
+                ) => (
+                  <button
+                    key={
+                      activity.id
+                    }
+                    type="button"
+                    onClick={() =>
+                      selectSlide(
+                        index,
+                      )
+                    }
+                    aria-current={
+                      currentIndex ===
+                      index
+                        ? "true"
+                        : undefined
+                    }
+                    className={`
+                      shrink-0
+                      rounded-xl
+                      px-3.5
+                      py-2.5
+                      text-[11px]
+                      font-semibold
+                      transition-all
+
+                      min-[400px]:px-4
+
+                      sm:px-5
+                      sm:text-sm
+
+                      ${
+                        currentIndex ===
+                        index
+                          ? `
+                            bg-blue-600
+                            text-white
+                            shadow-md
+                            shadow-blue-600/20
+                          `
+                          : `
+                            text-gray-500
+
+                            hover:bg-gray-50
+                            hover:text-gray-900
+                          `
+                      }
+                    `}
+                  >
+                    {
+                      activity.eventName
+                    }
+                  </button>
+                ),
+              )}
+            </div>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-            <span className="relative inline-block">
-              <span className="relative z-10">Kegiatan</span>
-              <span className="absolute bottom-0 left-0 w-full h-3 bg-blue-100 opacity-60 -z-0"></span>
-            </span>{" "}
-            HMPTI
-          </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">Event berkualitas untuk pengembangan kompetensi mahasiswa Teknik Informatika</p>
-        </motion.div>
 
-        {/* Event content */}
-        <div className="flex flex-col lg:flex-row gap-12 items-center">
-          {/* Event image carousel */}
-          <div className="w-full lg:w-1/2 relative" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
-            {events.length > 0 ? (
-              <div className="relative overflow-hidden rounded-2xl shadow-2xl shadow-blue-500/10 border border-gray-100">
-                <AnimatePresence custom={direction} mode="popLayout" initial={false}>
-                  <motion.div
-                    key={events[currentIndex].id}
-                    custom={direction}
-                    variants={slideVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ duration: 0.5 }}
-                    className="aspect-video w-full relative"
+          {/* =======================================
+              FEATURED ACTIVITY
+          ======================================== */}
+
+          <div
+            className="
+              grid
+              grid-cols-1
+              gap-10
+
+              sm:gap-9
+
+              lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]
+              lg:items-stretch
+              lg:gap-8
+
+              xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]
+              xl:gap-10
+            "
+          >
+            {/* =====================================
+                VISUAL SIDE
+            ====================================== */}
+
+            <motion.div
+              initial={{
+                opacity: 0,
+                x: -20,
+              }}
+              whileInView={{
+                opacity: 1,
+                x: 0,
+              }}
+              viewport={{
+                once: true,
+                amount: 0.1,
+              }}
+              transition={{
+                duration: 0.5,
+              }}
+              onMouseEnter={() =>
+                setIsPaused(
+                  true,
+                )
+              }
+              onMouseLeave={() =>
+                setIsPaused(
+                  false,
+                )
+              }
+              onFocusCapture={() =>
+                setIsPaused(
+                  true,
+                )
+              }
+              onBlurCapture={() =>
+                setIsPaused(
+                  false,
+                )
+              }
+              className="
+                relative
+                min-w-0
+                pb-1
+
+                sm:pb-0
+              "
+            >
+              {/* =============================
+                  ACTIVITY CARD
+              ============================== */}
+
+              <div
+                className="
+                  flex
+                  h-full
+                  flex-col
+                  overflow-hidden
+                  rounded-[22px]
+                  border
+                  border-gray-200
+                  bg-white
+                  shadow-[0_18px_50px_rgba(15,23,42,0.07)]
+
+                  sm:rounded-[28px]
+                  sm:shadow-[0_20px_60px_rgba(15,23,42,0.07)]
+                "
+              >
+                {/* =============================
+                    IMAGE AREA
+                ============================== */}
+
+                <div
+                  className="
+                    relative
+                    aspect-[4/3]
+                    overflow-hidden
+                    bg-gradient-to-br
+                    from-gray-50
+                    via-white
+                    to-blue-50/50
+
+                    min-[400px]:aspect-[4/3]
+
+                    sm:aspect-[16/10]
+
+                    lg:flex-1
+                    lg:aspect-auto
+                    lg:min-h-[390px]
+
+                    xl:min-h-[430px]
+                  "
+                >
+                  {/* DECORATION */}
+
+                  <div
+                    aria-hidden="true"
+                    className="
+                      pointer-events-none
+                      absolute
+                      inset-0
+                    "
                   >
-                    <img src={events[currentIndex].imageUrl} alt={events[currentIndex].eventName} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                    <div
+                      className="
+                        absolute
+                        left-1/2
+                        top-1/2
+                        h-[70%]
+                        w-[70%]
+                        -translate-x-1/2
+                        -translate-y-1/2
+                        rounded-full
+                        bg-blue-100/45
+                        blur-3xl
+                      "
+                    />
 
-                    {/* Event info overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                      <motion.span
-                        className="inline-block px-3 py-1.5 text-xs font-semibold tracking-wider text-white uppercase bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full mb-3"
-                        initial={{ y: 10, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                      >
-                        {events[currentIndex].categoryEvent || "events"}
-                      </motion.span>
 
-                      <motion.h3 className="text-2xl sm:text-3xl font-bold mb-3" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
-                        {events[currentIndex].eventName}
-                      </motion.h3>
+                    <div
+                      className="
+                        absolute
+                        inset-4
+                        rounded-2xl
+                        border
+                        border-gray-100
 
-                      <motion.div className="flex items-center gap-4 text-sm" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}>
-                        <span className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full">
-                          <FiUsers className="text-blue-300" />
-                          {events[currentIndex].categoryAudiens || "Mahasiswa"}
-                        </span>
-                      </motion.div>
-                    </div>
-                  </motion.div>
-                </AnimatePresence>
+                        sm:inset-7
+                      "
+                    />
+                  </div>
 
-                {/* Navigation arrows */}
-                {events.length > 1 && (
-                  <>
-                    <button
-                      onClick={prevSlide}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all"
-                      aria-label="Previous slide"
+
+                  {/* IMAGE */}
+
+                  <AnimatePresence
+                    custom={
+                      direction
+                    }
+                    mode="wait"
+                    initial={
+                      false
+                    }
+                  >
+                    <motion.div
+                      key={
+                        currentActivity.id
+                      }
+                      custom={
+                        direction
+                      }
+                      variants={
+                        slideVariants
+                      }
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      transition={{
+                        duration: 0.35,
+                        ease:
+                          "easeOut",
+                      }}
+                      className="
+                        absolute
+                        inset-0
+                        z-10
+                      "
                     >
-                      <FiArrowLeft className="text-gray-700" />
-                    </button>
-                    <button
-                      onClick={nextSlide}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all"
-                      aria-label="Next slide"
-                    >
-                      <FiArrowRight className="text-gray-700" />
-                    </button>
-                  </>
-                )}
+                      <Image
+                        src={
+                          currentActivity.imageUrl
+                        }
+                        alt={
+                          currentActivity.eventName
+                        }
+                        fill
+                        priority={
+                          currentIndex ===
+                          0
+                        }
+                        sizes="
+                          (max-width: 639px) 92vw,
+                          (max-width: 1023px) 90vw,
+                          55vw
+                        "
+                        className="
+                          object-contain
+                          p-9
 
-                {/* Navigation dots */}
-                {events.length > 1 && (
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                    {events.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          setDirection(index > currentIndex ? 1 : -1);
-                          setCurrentIndex(index);
-                        }}
-                        className={`w-2 h-2 rounded-full transition-all ${currentIndex === index ? "bg-white w-6" : "bg-white/50 hover:bg-white/80"}`}
-                        aria-label={`Go to slide ${index + 1}`}
+                          min-[400px]:p-10
+
+                          sm:p-12
+
+                          lg:p-14
+
+                          xl:p-16
+                        "
                       />
-                    ))}
+                    </motion.div>
+                  </AnimatePresence>
+
+
+                  {/* =============================
+                      BADGES
+                  ============================== */}
+
+                  <div
+                    className="
+                      absolute
+                      left-3
+                      top-3
+                      z-20
+                      flex
+                      max-w-[calc(100%-1.5rem)]
+                      flex-wrap
+                      gap-1.5
+
+                      sm:left-5
+                      sm:top-5
+                      sm:gap-2
+                    "
+                  >
+                    <span
+                      className="
+                        rounded-full
+                        border
+                        border-gray-200
+                        bg-white/90
+                        px-2.5
+                        py-1.5
+                        text-[9px]
+                        font-semibold
+                        text-gray-700
+                        shadow-sm
+                        backdrop-blur-md
+
+                        min-[400px]:text-[10px]
+
+                        sm:px-3
+                        sm:text-xs
+                      "
+                    >
+                      {
+                        currentActivity.categoryEvent
+                      }
+                    </span>
+
+
+                    <span
+                      className={`
+                        rounded-full
+                        border
+                        px-2.5
+                        py-1.5
+                        text-[9px]
+                        font-semibold
+                        shadow-sm
+
+                        min-[400px]:text-[10px]
+
+                        sm:px-3
+                        sm:text-xs
+
+                        ${getStatusClass(
+                          currentActivity.statusEvent,
+                        )}
+                      `}
+                    >
+                      {getStatusLabel(
+                        currentActivity.statusEvent,
+                      )}
+                    </span>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="aspect-video w-full bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-200">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FiCalendar className="text-gray-400 text-2xl" />
+
+
+                  {/* =============================
+                      ARROWS
+                  ============================== */}
+
+                  {activities.length >
+                    1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={
+                          previousSlide
+                        }
+                        aria-label="Aktivitas sebelumnya"
+                        className="
+                          absolute
+                          left-2.5
+                          top-1/2
+                          z-30
+                          flex
+                          h-9
+                          w-9
+                          -translate-y-1/2
+                          items-center
+                          justify-center
+                          rounded-full
+                          border
+                          border-gray-200
+                          bg-white/90
+                          text-gray-600
+                          shadow-lg
+                          backdrop-blur-md
+                          transition-all
+
+                          active:scale-95
+
+                          hover:bg-white
+                          hover:text-blue-600
+
+                          min-[400px]:left-3
+                          min-[400px]:h-10
+                          min-[400px]:w-10
+
+                          sm:left-4
+                          sm:h-11
+                          sm:w-11
+                        "
+                      >
+                        <FiChevronLeft />
+                      </button>
+
+
+                      <button
+                        type="button"
+                        onClick={
+                          nextSlide
+                        }
+                        aria-label="Aktivitas berikutnya"
+                        className="
+                          absolute
+                          right-2.5
+                          top-1/2
+                          z-30
+                          flex
+                          h-9
+                          w-9
+                          -translate-y-1/2
+                          items-center
+                          justify-center
+                          rounded-full
+                          border
+                          border-gray-200
+                          bg-white/90
+                          text-gray-600
+                          shadow-lg
+                          backdrop-blur-md
+                          transition-all
+
+                          active:scale-95
+
+                          hover:bg-white
+                          hover:text-blue-600
+
+                          min-[400px]:right-3
+                          min-[400px]:h-10
+                          min-[400px]:w-10
+
+                          sm:right-4
+                          sm:h-11
+                          sm:w-11
+                        "
+                      >
+                        <FiChevronRight />
+                      </button>
+                    </>
+                  )}
+                </div>
+
+
+                {/* =============================
+                    CARD FOOTER
+                ============================== */}
+
+                <div
+                  className="
+                    border-t
+                    border-gray-100
+                    bg-white
+                    px-4
+                    py-5
+
+                    min-[400px]:px-5
+
+                    sm:px-6
+                    sm:py-6
+
+                    lg:px-7
+                  "
+                >
+                  <div
+                    className="
+                      flex
+                      flex-col
+                      gap-4
+
+                      sm:flex-row
+                      sm:items-end
+                      sm:justify-between
+                    "
+                  >
+                    <div
+                      className="
+                        min-w-0
+                        flex-1
+                      "
+                    >
+                      <p
+                        className="
+                          text-[9px]
+                          font-semibold
+                          uppercase
+                          tracking-[0.14em]
+                          text-blue-600
+
+                          min-[400px]:text-[10px]
+
+                          sm:text-xs
+                        "
+                      >
+                        Program Unggulan
+                      </p>
+
+
+                      <h3
+                        className="
+                          mt-1.5
+                          break-words
+                          text-xl
+                          font-bold
+                          tracking-tight
+                          text-gray-950
+
+                          min-[400px]:text-2xl
+
+                          sm:text-3xl
+                        "
+                      >
+                        {
+                          currentActivity.eventName
+                        }
+                      </h3>
+
+
+                      <p
+                        className="
+                          mt-1.5
+                          text-xs
+                          leading-5
+                          text-gray-500
+
+                          min-[400px]:text-sm
+                          min-[400px]:leading-6
+
+                          sm:text-base
+                        "
+                      >
+                        {
+                          currentActivity.descriptionEvent
+                        }
+                      </p>
+                    </div>
+
+
+                    <div
+                      className="
+                        flex
+                        shrink-0
+                        items-center
+                        gap-2
+                      "
+                    >
+                      <FiUsers
+                        className="
+                          shrink-0
+                          text-blue-500
+                        "
+                      />
+
+                      <span
+                        className="
+                          text-xs
+                          font-medium
+                          text-gray-500
+
+                          sm:text-sm
+                        "
+                      >
+                        {
+                          currentActivity.categoryAudiens
+                        }
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-gray-500">Belum ada event tersedia</p>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Event description */}
-          <div className="w-full lg:w-1/2 space-y-6">
-            <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }} viewport={{ once: true }}>
-              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Event Berkualitas</span> untuk Pengembangan Diri
-              </h3>
 
-              <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                HMPTI Universitas Duta Bangsa menyelenggarakan berbagai program unggulan untuk meningkatkan kompetensi teknis dan soft skill mahasiswa Informatika.
-              </p>
+              {/* =============================
+                  DOT INDICATORS
 
-              <ul className="space-y-4 mb-8">
-                {["Seminar dan workshop dengan praktisi industri", "Kompetisi untuk mengasah kemampuan teknis", "Kegiatan sosial untuk pengembangan karakter"].map(
-                  (item, index) => (
-                    <motion.li
-                      key={index}
-                      className="flex items-start gap-4 p-3 bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-                      initial={{ opacity: 0, x: -20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + index * 0.1 }}
-                      viewport={{ once: true }}
-                    >
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                        </div>
-                      </div>
-                      <span className="text-gray-700">{item}</span>
-                    </motion.li>
+                  DIBERI AREA SENDIRI AGAR
+                  TIDAK KETUTUP CARD BERIKUTNYA
+              ============================== */}
+
+              <div
+                className="
+                  relative
+                  z-20
+                  mt-5
+                  mb-1
+                  flex
+                  min-h-5
+                  w-full
+                  items-center
+                  justify-center
+                  gap-2
+
+                  min-[400px]:mt-6
+
+                  sm:mb-0
+                "
+              >
+                {activities.map(
+                  (
+                    activity,
+                    index,
+                  ) => (
+                    <button
+                      key={
+                        activity.id
+                      }
+                      type="button"
+                      onClick={() =>
+                        selectSlide(
+                          index,
+                        )
+                      }
+                      aria-label={`Tampilkan ${activity.eventName}`}
+                      aria-current={
+                        currentIndex ===
+                        index
+                          ? "true"
+                          : undefined
+                      }
+                      className={`
+                        block
+                        h-2
+                        shrink-0
+                        rounded-full
+                        transition-all
+                        duration-300
+
+                        ${
+                          currentIndex ===
+                          index
+                            ? `
+                              w-7
+                              bg-blue-600
+                            `
+                            : `
+                              w-2
+                              bg-gray-300
+
+                              hover:bg-gray-400
+                            `
+                        }
+                      `}
+                    />
                   ),
                 )}
-              </ul>
+              </div>
+            </motion.div>
+
+
+            {/* =====================================
+                INFORMATION SIDE
+            ====================================== */}
+
+            <motion.div
+              initial={{
+                opacity: 0,
+                x: 20,
+              }}
+              whileInView={{
+                opacity: 1,
+                x: 0,
+              }}
+              viewport={{
+                once: true,
+                amount: 0.1,
+              }}
+              transition={{
+                duration: 0.5,
+              }}
+              className="
+                relative
+                z-10
+                min-w-0
+
+                lg:flex
+                lg:flex-col
+              "
+            >
+              <div
+                className="
+                  rounded-[22px]
+                  border
+                  border-gray-200
+                  bg-white
+                  p-4
+                  shadow-sm
+
+                  min-[400px]:p-5
+
+                  sm:rounded-[24px]
+                  sm:p-6
+
+                  lg:flex
+                  lg:flex-1
+                  lg:flex-col
+                  lg:p-7
+
+                  xl:p-8
+                "
+              >
+                {/* =============================
+                    TOP ROW
+                ============================== */}
+
+                <div
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    gap-3
+                  "
+                >
+                  <div
+                    className="
+                      inline-flex
+                      min-w-0
+                      items-center
+                      gap-2
+                      rounded-full
+                      border
+                      border-blue-100
+                      bg-blue-50
+                      px-3
+                      py-1.5
+                      text-[10px]
+                      font-semibold
+                      text-blue-700
+
+                      sm:text-xs
+                    "
+                  >
+
+                    <span className="truncate">
+                      Aktivitas Mahasiswa
+                    </span>
+                  </div>
+
+
+                  <span
+                    className="
+                      shrink-0
+                      text-[10px]
+                      font-semibold
+                      tracking-wide
+                      text-gray-400
+
+                      sm:text-xs
+                    "
+                  >
+                    {String(
+                      currentIndex +
+                        1,
+                    ).padStart(
+                      2,
+                      "0",
+                    )}
+
+                    {" / "}
+
+                    {String(
+                      activities.length,
+                    ).padStart(
+                      2,
+                      "0",
+                    )}
+                  </span>
+                </div>
+
+
+                {/* =============================
+                    TITLE
+                ============================== */}
+
+                <h3
+                  className="
+                    mt-5
+                    max-w-xl
+                    break-words
+                    text-[1.65rem]
+                    font-bold
+                    leading-[1.12]
+                    tracking-tight
+                    text-gray-950
+
+                    min-[400px]:text-3xl
+
+                    sm:text-4xl
+
+                    lg:text-[38px]
+
+                    xl:text-[42px]
+                  "
+                >
+                  Ruang untuk{" "}
+
+                  <span
+                    className="
+                      bg-gradient-to-r
+                      from-blue-600
+                      to-cyan-500
+                      bg-clip-text
+                      text-transparent
+                    "
+                  >
+                    Belajar
+                  </span>
+
+                  , Berkarya, dan Berkolaborasi
+                </h3>
+
+
+                {/* =============================
+                    DESCRIPTION
+                ============================== */}
+
+                <p
+                  className="
+                    mt-4
+                    max-w-xl
+                    break-words
+                    text-[13px]
+                    leading-6
+                    text-gray-600
+
+                    sm:text-base
+                    sm:leading-8
+
+                    md:[text-align:justify]
+                    md:[text-justify:inter-word]
+                  "
+                >
+                  HMPTI menghadirkan berbagai
+                  kegiatan yang membantu mahasiswa
+                  memperluas wawasan, meningkatkan
+                  keterampilan, membangun relasi,
+                  serta mendapatkan pengalaman di
+                  luar proses akademik.
+                </p>
+
+
+                <div
+                  className="
+                    my-5
+                    h-px
+                    bg-gray-100
+
+                    sm:my-6
+                  "
+                />
+
+
+                {/* =============================
+                    BENEFITS
+                ============================== */}
+
+                <div
+                  className="
+                    grid
+                    grid-cols-1
+                    gap-3
+
+                    sm:grid-cols-3
+
+                    lg:grid-cols-1
+
+                    xl:grid-cols-3
+                  "
+                >
+                  {ACTIVITY_BENEFITS.map(
+                    (
+                      benefit,
+                    ) => {
+                      const Icon =
+                        benefit.icon;
+
+
+                      return (
+                        <div
+                          key={
+                            benefit.title
+                          }
+                          className="
+                            rounded-2xl
+                            border
+                            border-gray-100
+                            bg-gray-50/60
+                            p-4
+                            transition-all
+
+                            hover:border-blue-100
+                            hover:bg-blue-50/40
+                          "
+                        >
+                          <div
+                            className="
+                              flex
+                              items-start
+                              gap-3
+
+                              sm:block
+                            "
+                          >
+                            <div
+                              className="
+                                flex
+                                h-9
+                                w-9
+                                shrink-0
+                                items-center
+                                justify-center
+                                rounded-xl
+                                bg-white
+                                text-blue-600
+                                shadow-sm
+                                ring-1
+                                ring-gray-100
+                              "
+                            >
+                              <Icon />
+                            </div>
+
+
+                            <div
+                              className="
+                                min-w-0
+
+                                sm:mt-3
+                              "
+                            >
+                              <h4
+                                className="
+                                  text-sm
+                                  font-bold
+                                  text-gray-900
+                                "
+                              >
+                                {
+                                  benefit.title
+                                }
+                              </h4>
+
+
+                              <p
+                                className="
+                                  mt-1
+                                  text-xs
+                                  leading-5
+                                  text-gray-500
+
+                                  sm:mt-1.5
+                                "
+                              >
+                                {
+                                  benefit.description
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+
+
+                {/* =============================
+                    CTA
+                ============================== */}
+
+                <div
+                  className="
+                    mt-6
+
+                    lg:mt-auto
+                    lg:pt-7
+                  "
+                >
+                  <Link
+                    href="/pages/event"
+                    className="
+                      group
+                      inline-flex
+                      min-h-11
+                      w-full
+                      items-center
+                      justify-center
+                      gap-2
+                      rounded-xl
+                      bg-blue-600
+                      px-5
+                      py-3
+                      text-sm
+                      font-semibold
+                      text-white
+                      shadow-lg
+                      shadow-blue-600/15
+                      transition-all
+
+                      active:scale-[0.99]
+
+                      hover:-translate-y-0.5
+                      hover:bg-blue-500
+                      hover:shadow-xl
+
+                      sm:w-auto
+                      sm:px-6
+                    "
+                  >
+                    Lihat Semua Kegiatan
+
+                    <FiArrowRight
+                      className="
+                        shrink-0
+                        transition-transform
+
+                        group-hover:translate-x-1
+                      "
+                    />
+                  </Link>
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </MotionConfig>
   );
 }

@@ -1,149 +1,557 @@
 "use client";
 
 import { auth } from "@/lib/firebase";
+
 import { signOut } from "firebase/auth";
+
 import Link from "next/link";
+
 import { usePathname, useRouter } from "next/navigation";
+
 import { useEffect, useState } from "react";
-import { AiOutlineCalendar, AiOutlineClose, AiOutlineDashboard, AiOutlineFileText, AiOutlineLogout, AiOutlineMenu, AiOutlineShop, AiOutlineTeam } from "react-icons/ai";
+
+import type { IconType } from "react-icons";
+
+import {
+  AiOutlineCalendar,
+  AiOutlineClose,
+  AiOutlineDashboard,
+  AiOutlineFileText,
+  AiOutlineLoading3Quarters,
+  AiOutlineLogout,
+  AiOutlineMenu,
+  AiOutlineShop,
+  AiOutlineTeam,
+} from "react-icons/ai";
+
+import { toast } from "react-toastify";
+
+// =========================================================
+// TYPES
+// =========================================================
 
 interface AdminSidebarProps {
   isOpen?: boolean;
+
   onClose?: () => void;
+
   isMobile?: boolean;
+
   collapsed: boolean;
+
   setCollapsed: (value: boolean) => void;
 }
 
+interface MenuItem {
+  href: string;
+
+  label: string;
+
+  icon: IconType;
+}
+
+// =========================================================
+// MENU
+// =========================================================
+
+const MENU_ITEMS: MenuItem[] = [
+  {
+    href: "/admin/dashboard",
+    label: "Dashboard",
+    icon: AiOutlineDashboard,
+  },
+  {
+    href: "/admin/member",
+    label: "Anggota",
+    icon: AiOutlineTeam,
+  },
+  {
+    href: "/admin/event",
+    label: "Event",
+    icon: AiOutlineCalendar,
+  },
+  {
+    href: "/admin/news",
+    label: "Berita",
+    icon: AiOutlineFileText,
+  },
+  {
+    href: "/admin/product",
+    label: "Produk",
+    icon: AiOutlineShop,
+  },
+];
+
+// =========================================================
+// COMPONENT
+// =========================================================
+
 export default function AdminSidebar({ isOpen = false, onClose, isMobile = false, collapsed, setCollapsed }: AdminSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [isHovered, setIsHovered] = useState(false);
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    router.replace("/auth/login");
+  const router = useRouter();
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  /**
+   * Sidebar mobile harus selalu
+   * menggunakan mode expanded.
+   *
+   * State collapsed hanya berlaku
+   * untuk sidebar desktop.
+   */
+  const isCollapsed = isMobile ? false : collapsed;
+
+  // =======================================================
+  // ACTIVE ROUTE
+  // =======================================================
+
+  const isActiveRoute = (href: string) => {
+    /**
+     * Dashboard hanya aktif pada
+     * /admin/dashboard.
+     */
+    if (href === "/admin/dashboard") {
+      return pathname === href;
+    }
+
+    /**
+     * Menu lainnya tetap aktif
+     * jika nanti memiliki subroute.
+     *
+     * Contoh:
+     * /admin/event/123
+     */
+    return pathname === href || pathname.startsWith(`${href}/`);
   };
 
-  const menuItems = [
-    {
-      href: "/admin/dashboard",
-      label: "Dashboard",
-      icon: <AiOutlineDashboard className="text-xl" />,
-    },
-    {
-      href: "/admin/member",
-      label: "Anggota",
-      icon: <AiOutlineTeam className="text-xl" />,
-    },
-    {
-      href: "/admin/event",
-      label: "Event",
-      icon: <AiOutlineCalendar className="text-xl" />,
-    },
-    {
-      href: "/admin/news",
-      label: "Berita",
-      icon: <AiOutlineFileText className="text-xl" />,
-    },
-    {
-      href: "/admin/product",
-      label: "Produk",
-      icon: <AiOutlineShop className="text-xl" />,
-    },
-  ];
+  // =======================================================
+  // MOBILE BODY LOCK + ESC
+  // =======================================================
 
-  // Auto-close mobile sidebar on route change
   useEffect(() => {
-    if (isMobile && isOpen && onClose) {
-      onClose();
+    if (!isMobile || !isOpen) {
+      return;
     }
-  }, [pathname, isMobile, isOpen, onClose]);
+
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose?.();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobile, isOpen, onClose]);
+
+  // =======================================================
+  // MENU CLICK
+  // =======================================================
+
+  const handleMenuClick = () => {
+    /**
+     * Mobile sidebar ditutup ketika
+     * pengguna memilih menu.
+     *
+     * Ini menggantikan useEffect
+     * pathname lama yang bisa membuat
+     * sidebar langsung tertutup
+     * ketika baru dibuka.
+     */
+    if (isMobile) {
+      onClose?.();
+    }
+  };
+
+  // =======================================================
+  // COLLAPSE
+  // =======================================================
+
+  const handleToggleCollapse = () => {
+    if (isMobile) {
+      return;
+    }
+
+    setCollapsed(!collapsed);
+  };
+
+  // =======================================================
+  // LOGOUT
+  // =======================================================
+
+  const handleLogout = async () => {
+    if (logoutLoading) {
+      return;
+    }
+
+    setLogoutLoading(true);
+
+    try {
+      await signOut(auth);
+
+      onClose?.();
+
+      router.replace("/auth/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+
+      toast.error("Gagal keluar dari akun. Silakan coba kembali.");
+
+      setLogoutLoading(false);
+    }
+  };
+
+  // =======================================================
+  // SIDEBAR CONTENT
+  // =======================================================
 
   const sidebarContent = (
     <>
-      {/* Header with Logo */}
+      {/* =========================================
+          HEADER
+      ========================================== */}
+
       <div
         className={`
-    flex items-center h-16 border-b border-gray-200
-    transition-all duration-300
-    ${collapsed ? "justify-center px-2" : "justify-between px-4"}
-  `}
-      >
-        {/* Logo + Title */}
-        {!collapsed ? (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">H</span>
-            </div>
-            <h1 className="text-lg font-semibold text-gray-800 whitespace-nowrap">HMPTI Admin</h1>
-          </div>
-        ) : (
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">H</span>
-          </div>
-        )}
+          flex
+          h-16
+          shrink-0
+          items-center
+          border-b
+          border-gray-100
+          transition-all
+          duration-300
 
-        {/* Toggle Button (Desktop) */}
-        {!isMobile && (
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          ${
+            isCollapsed
+              ? `
+                justify-center
+                px-2
+              `
+              : `
+                justify-between
+                px-4
+              `
+          }
+        `}
+      >
+        {/* =======================================
+            BRAND
+        ======================================== */}
+
+        <Link
+          href="/admin/dashboard"
+          onClick={handleMenuClick}
+          aria-label="HMPTI Admin Dashboard"
+          className={`
+            flex
+            min-w-0
+            items-center
+            gap-3
+
+            ${isCollapsed ? "justify-center" : ""}
+          `}
+        >
+          <div
+            className="
+              flex
+              h-9
+              w-9
+              shrink-0
+              items-center
+              justify-center
+              rounded-xl
+              bg-blue-600
+              text-sm
+              font-bold
+              text-white
+              shadow-sm
+              shadow-blue-500/20
+            "
           >
-            {collapsed ? <AiOutlineMenu className="text-gray-600 text-lg" /> : <AiOutlineClose className="text-gray-600 text-lg" />}
+            H
+          </div>
+
+          {!isCollapsed && (
+            <div className="min-w-0">
+              <p
+                className="
+                  truncate
+                  text-sm
+                  font-bold
+                  text-gray-900
+                "
+              >
+                HMPTI Admin
+              </p>
+
+              <p
+                className="
+                  truncate
+                  text-[10px]
+                  font-medium
+                  uppercase
+                  tracking-[0.12em]
+                  text-gray-400
+                "
+              >
+                Management
+              </p>
+            </div>
+          )}
+        </Link>
+
+        {/* =======================================
+            DESKTOP TOGGLE
+        ======================================== */}
+
+        {!isMobile && !isCollapsed && (
+          <button
+            type="button"
+            onClick={handleToggleCollapse}
+            aria-label="Tutup sidebar"
+            title="Kecilkan sidebar"
+            className="
+                flex
+                h-9
+                w-9
+                shrink-0
+                items-center
+                justify-center
+                rounded-lg
+                text-gray-400
+                transition-colors
+
+                hover:bg-gray-100
+                hover:text-gray-700
+              "
+          >
+            <AiOutlineClose className="text-lg" />
           </button>
         )}
 
-        {/* Close Button (Mobile) */}
+        {/* =======================================
+            MOBILE CLOSE
+        ======================================== */}
+
         {isMobile && (
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            <AiOutlineClose className="text-gray-600 text-lg" />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup menu"
+            className="
+              flex
+              h-9
+              w-9
+              shrink-0
+              items-center
+              justify-center
+              rounded-lg
+              text-gray-400
+              transition-colors
+
+              hover:bg-gray-100
+              hover:text-gray-700
+            "
+          >
+            <AiOutlineClose className="text-xl" />
           </button>
         )}
       </div>
 
-      {/* Navigation Menu */}
-      <div className="flex-1 overflow-y-auto py-4 px-2">
-        <nav className="space-y-1">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+      {/* =========================================
+          COLLAPSED OPEN BUTTON
+      ========================================== */}
+
+      {!isMobile && isCollapsed && (
+        <div
+          className="
+              flex
+              justify-center
+              px-2
+              pt-3
+            "
+        >
+          <button
+            type="button"
+            onClick={handleToggleCollapse}
+            aria-label="Buka sidebar"
+            title="Perbesar sidebar"
+            className="
+                flex
+                h-9
+                w-9
+                items-center
+                justify-center
+                rounded-lg
+                text-gray-400
+                transition-colors
+
+                hover:bg-gray-100
+                hover:text-gray-700
+              "
+          >
+            <AiOutlineMenu className="text-lg" />
+          </button>
+        </div>
+      )}
+
+      {/* =========================================
+          NAVIGATION
+      ========================================== */}
+
+      <div
+        className="
+          flex-1
+          overflow-y-auto
+          px-2
+          py-4
+        "
+      >
+        {!isCollapsed && (
+          <p
+            className="
+              mb-2
+              px-3
+              text-[10px]
+              font-semibold
+              uppercase
+              tracking-[0.14em]
+              text-gray-400
+            "
+          >
+            Menu Utama
+          </p>
+        )}
+
+        <nav aria-label="Navigasi admin" className="space-y-1">
+          {MENU_ITEMS.map((item) => {
+            const Icon = item.icon;
+
+            const isActive = isActiveRoute(item.href);
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={handleMenuClick}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={isCollapsed ? item.label : undefined}
+                title={isCollapsed ? item.label : undefined}
                 className={`
-            relative flex items-center rounded-lg px-3 py-3
-            transition-all duration-200 group
-            ${isActive ? "bg-blue-50 text-blue-600 shadow-sm" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}
-            ${collapsed ? "justify-center" : ""}
-          `}
+                    group
+                    relative
+                    flex
+                    min-h-11
+                    items-center
+                    rounded-xl
+                    px-3
+                    text-sm
+                    font-medium
+                    transition-all
+                    duration-200
+
+                    ${isCollapsed ? "justify-center" : ""}
+
+                    ${
+                      isActive
+                        ? `
+                          bg-blue-50
+                          text-blue-700
+                        `
+                        : `
+                          text-gray-600
+
+                          hover:bg-gray-50
+                          hover:text-gray-900
+                        `
+                    }
+                  `}
               >
-                {/* Icon */}
-                <div className={`relative ${collapsed ? "" : "mr-3"}`}>
-                  {item.icon}
+                {/* =================================
+                      ACTIVE INDICATOR
+                  ================================== */}
 
-                  {/* Active indicator */}
-                  {isActive && <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 rounded-full" />}
-                </div>
+                {isActive && (
+                  <span
+                    aria-hidden="true"
+                    className="
+                        absolute
+                        left-0
+                        top-1/2
+                        h-6
+                        w-1
+                        -translate-y-1/2
+                        rounded-r-full
+                        bg-blue-600
+                      "
+                  />
+                )}
 
-                {/* Label (desktop expand) */}
-                {!collapsed && <span className="text-sm font-medium truncate">{item.label}</span>}
+                {/* =================================
+                      ICON
+                  ================================== */}
 
-                {/* Tooltip (collapsed) */}
-                {collapsed && (
+                <Icon
+                  className={`
+                      shrink-0
+                      text-xl
+                      transition-colors
+
+                      ${
+                        isActive
+                          ? "text-blue-600"
+                          : `
+                            text-gray-400
+
+                            group-hover:text-gray-600
+                          `
+                      }
+
+                      ${!isCollapsed ? "mr-3" : ""}
+                    `}
+                />
+
+                {/* =================================
+                      LABEL
+                  ================================== */}
+
+                {!isCollapsed && (
                   <span
                     className="
-                absolute left-full ml-2 px-2 py-1
-                bg-gray-900 text-white text-xs rounded
-                opacity-0 group-hover:opacity-100
-                transition-opacity pointer-events-none
-                whitespace-nowrap z-50
-              "
+                        min-w-0
+                        flex-1
+                        truncate
+                      "
                   >
                     {item.label}
                   </span>
+                )}
+
+                {/* =================================
+                      ACTIVE DOT
+                  ================================== */}
+
+                {isActive && !isCollapsed && (
+                  <span
+                    aria-hidden="true"
+                    className="
+                          h-1.5
+                          w-1.5
+                          shrink-0
+                          rounded-full
+                          bg-blue-600
+                        "
+                  />
                 )}
               </Link>
             );
@@ -151,86 +559,209 @@ export default function AdminSidebar({ isOpen = false, onClose, isMobile = false
         </nav>
       </div>
 
-      {/* Logout Button */}
-      <div className="p-3 border-t border-gray-200">
-        <button
-          onClick={handleLogout}
-          className={`
-            relative flex items-center w-full rounded-lg px-3 py-3
-            text-gray-600 hover:bg-gray-50 hover:text-gray-900
-            transition-all duration-200 group
-            ${collapsed ? "justify-center" : ""}
-          `}
-        >
-          {/* Icon */}
-          <AiOutlineLogout className={`text-xl ${collapsed ? "" : "mr-3"}`} />
+      {/* =========================================
+          FOOTER
+      ========================================== */}
 
-          {/* Label (expanded) */}
-          {!collapsed && <span className="text-sm font-medium">Logout</span>}
-
-          {/* Tooltip (collapsed) */}
-          {collapsed && (
-            <span
+      <div
+        className="
+          shrink-0
+          border-t
+          border-gray-100
+          p-2
+        "
+      >
+        {!isCollapsed && (
+          <div
+            className="
+              mb-2
+              rounded-xl
+              bg-gray-50
+              px-3
+              py-2.5
+            "
+          >
+            <p
               className="
-                absolute left-full ml-2 px-2 py-1
-                bg-gray-900 text-white text-xs rounded
-                opacity-0 group-hover:opacity-100
-                transition-opacity pointer-events-none
-                whitespace-nowrap z-50
+                truncate
+                text-[11px]
+                font-medium
+                text-gray-500
               "
             >
-              Logout
-            </span>
+              {auth.currentUser?.email ?? "Administrator"}
+            </p>
+
+            <p
+              className="
+                mt-0.5
+                text-[10px]
+                text-gray-400
+              "
+            >
+              Administrator
+            </p>
+          </div>
+        )}
+
+        {/* =======================================
+            LOGOUT
+        ======================================== */}
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={logoutLoading}
+          aria-label={isCollapsed ? "Keluar" : undefined}
+          title={isCollapsed ? "Keluar" : undefined}
+          className={`
+            group
+            flex
+            min-h-11
+            w-full
+            items-center
+            rounded-xl
+            px-3
+            text-sm
+            font-medium
+            text-gray-600
+            transition-colors
+
+            hover:bg-red-50
+            hover:text-red-600
+
+            disabled:cursor-not-allowed
+            disabled:opacity-50
+
+            ${isCollapsed ? "justify-center" : ""}
+          `}
+        >
+          {logoutLoading ? (
+            <AiOutlineLoading3Quarters
+              className={`
+                shrink-0
+                animate-spin
+                text-xl
+
+                ${!isCollapsed ? "mr-3" : ""}
+              `}
+            />
+          ) : (
+            <AiOutlineLogout
+              className={`
+                shrink-0
+                text-xl
+                text-gray-400
+                transition-colors
+
+                group-hover:text-red-500
+
+                ${!isCollapsed ? "mr-3" : ""}
+              `}
+            />
           )}
+
+          {!isCollapsed && <span>{logoutLoading ? "Keluar..." : "Logout"}</span>}
         </button>
       </div>
     </>
   );
 
+  // =======================================================
+  // MOBILE SIDEBAR
+  // =======================================================
+
   if (isMobile) {
     return (
-      <div className={`fixed inset-0 z-50 md:hidden transition-transform duration-300 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" onClick={onClose}></div>
-        <div
-          className="relative flex flex-col w-80 bg-white h-full shadow-xl border-r border-gray-200 transform transition-transform duration-300"
-          onClick={(e) => e.stopPropagation()}
+      <div
+        className={`
+          fixed
+          inset-0
+          z-[70]
+
+          md:hidden
+
+          ${isOpen ? "pointer-events-auto" : "pointer-events-none"}
+        `}
+        aria-hidden={!isOpen}
+      >
+        {/* =======================================
+            BACKDROP
+        ======================================== */}
+
+        <button
+          type="button"
+          aria-label="Tutup menu sidebar"
+          onClick={onClose}
+          tabIndex={isOpen ? 0 : -1}
+          className={`
+            absolute
+            inset-0
+            bg-black/40
+            backdrop-blur-[2px]
+            transition-opacity
+            duration-300
+
+            ${isOpen ? "opacity-100" : "opacity-0"}
+          `}
+        />
+
+        {/* =======================================
+            DRAWER
+        ======================================== */}
+
+        <aside
+          className={`
+            relative
+            z-10
+            flex
+            h-full
+            w-[min(320px,88vw)]
+            flex-col
+            border-r
+            border-gray-200
+            bg-white
+            shadow-2xl
+            transition-transform
+            duration-300
+            ease-out
+
+            ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          `}
         >
           {sidebarContent}
-        </div>
+        </aside>
       </div>
     );
   }
 
+  // =======================================================
+  // DESKTOP SIDEBAR
+  // =======================================================
+
   return (
-    <div
-      className={`hidden md:flex flex-col fixed inset-y-0 bg-white border-r border-gray-200 transition-all duration-300 ${collapsed ? "w-16" : "w-64"}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+    <aside
+      className={`
+        fixed
+        inset-y-0
+        left-0
+        z-40
+        hidden
+        flex-col
+        border-r
+        border-gray-200
+        bg-white
+        shadow-[2px_0_8px_rgba(15,23,42,0.02)]
+        transition-[width]
+        duration-300
+        ease-out
+
+        md:flex
+
+        ${isCollapsed ? "w-16" : "w-64"}
+      `}
     >
       {sidebarContent}
-
-      {/* Collapse Handle */}
-      {!collapsed && isHovered && (
-        <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
-          <button
-            onClick={() => setCollapsed(true)}
-            className="w-4 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-          </button>
-        </div>
-      )}
-
-      {collapsed && isHovered && (
-        <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
-          <button
-            onClick={() => setCollapsed(false)}
-            className="w-4 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-          </button>
-        </div>
-      )}
-    </div>
+    </aside>
   );
 }

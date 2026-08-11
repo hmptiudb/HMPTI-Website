@@ -1,375 +1,924 @@
 "use client";
+
 import { newsCollection } from "@/lib/firebase";
-import { getDocs, orderBy, query } from "firebase/firestore";
-import { AnimatePresence, motion } from "framer-motion";
+
+import { getDocs, type Timestamp } from "firebase/firestore";
+
+import { motion, useReducedMotion } from "framer-motion";
+
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { FiCalendar, FiChevronLeft, FiChevronRight, FiUser, FiArrowRight } from "react-icons/fi";
-import { IoSparkles, IoNewspaperOutline } from "react-icons/io5";
+import Link from "next/link";
+
+import { useEffect, useMemo, useState } from "react";
+
+import { FiArrowRight, FiCalendar, FiChevronLeft, FiChevronRight, FiUser } from "react-icons/fi";
+
+import { IoNewspaperOutline } from "react-icons/io5";
+
+// =========================================================
+// TYPES
+// =========================================================
+
+interface NewsItem {
+  id: string;
+
+  titleNews: string;
+
+  descriptionNews: string;
+
+  /**
+   * Nama field lama sengaja tetap
+   * menggunakan writterNews agar
+   * kompatibel dengan Firestore.
+   */
+  writterNews: string;
+
+  categoryNews?: string;
+
+  imageUrl: string;
+
+  /**
+   * Field tanggal lama.
+   */
+  dateCreated: string;
+
+  /**
+   * Timestamp baru dari Admin News.
+   */
+  dateCreatedAt?: Timestamp;
+
+  createdAt?: Timestamp;
+
+  updatedAt?: Timestamp;
+}
+
+// =========================================================
+// CONSTANTS
+// =========================================================
+
+const NEWS_PER_PAGE = 8;
+
+// =========================================================
+// DATE HELPERS
+// =========================================================
+
+function createValidatedDate(year: number, month: number, day: number): Date | null {
+  const date = new Date(year, month - 1, day, 12, 0, 0);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+
+  return date;
+}
+
+function parseNewsDate(value?: string): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return null;
+  }
+
+  // =======================================================
+  // FORMAT BARU:
+  // YYYY-MM-DD
+  // =======================================================
+
+  const isoMatch = normalizedValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+
+    return createValidatedDate(Number(year), Number(month), Number(day));
+  }
+
+  // =======================================================
+  // FORMAT LAMA:
+  // DD/MM/YYYY
+  // DD-MM-YYYY
+  // =======================================================
+
+  const legacyMatch = normalizedValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+
+  if (legacyMatch) {
+    const [, day, month, year] = legacyMatch;
+
+    return createValidatedDate(Number(year), Number(month), Number(day));
+  }
+
+  // =======================================================
+  // FALLBACK
+  // ISO DATETIME / STRING DATE LAMA
+  // =======================================================
+
+  const fallbackDate = new Date(normalizedValue);
+
+  if (Number.isNaN(fallbackDate.getTime())) {
+    return null;
+  }
+
+  return fallbackDate;
+}
+
+function getNewsDate(news: NewsItem): Date | null {
+  /**
+   * Prioritas pertama:
+   * Firestore Timestamp terbaru.
+   */
+  if (news.dateCreatedAt && typeof news.dateCreatedAt.toDate === "function") {
+    return news.dateCreatedAt.toDate();
+  }
+
+  /**
+   * Fallback:
+   * field string data lama.
+   */
+  const legacyDate = parseNewsDate(news.dateCreated);
+
+  if (legacyDate) {
+    return legacyDate;
+  }
+
+  /**
+   * Fallback terakhir:
+   * waktu document dibuat.
+   */
+  if (news.createdAt && typeof news.createdAt.toDate === "function") {
+    return news.createdAt.toDate();
+  }
+
+  return null;
+}
+
+function getNewsTimestamp(news: NewsItem) {
+  return getNewsDate(news)?.getTime() ?? 0;
+}
+
+function formatNewsDate(news: NewsItem) {
+  const date = getNewsDate(news);
+
+  if (!date) {
+    return news.dateCreated || "-";
+  }
+
+  return date.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// =========================================================
+// PAGE
+// =========================================================
+
+export default function NewsPage() {
+  return (
+    <main
+      className="
+        min-h-screen
+        bg-white
+      "
+    >
+      <HeroViewNews />
+
+      <NewsView />
+    </main>
+  );
+}
+
+// =========================================================
+// HERO
+// =========================================================
 
 function HeroViewNews() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <section className="relative w-full min-h-[60vh] flex items-center justify-center overflow-hidden">
-      {/* Background with overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-800/80 to-indigo-700/90"></div>
-      
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIwLjUiIG9wYWNpdHk9IjAuMyIvPjwvc3ZnPg==')]"></div>
-        
-        {/* Floating shapes */}
-        <motion.div
-          className="absolute top-20 left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
+    <section
+      className="
+        relative
+        flex
+        min-h-[64svh]
+        w-full
+        items-center
+        justify-center
+        overflow-hidden
+        bg-gradient-to-br
+        from-blue-950
+        via-blue-900
+        to-cyan-900
+        px-4
+        pb-16
+        pt-28
+
+        sm:min-h-[68svh]
+        sm:px-6
+        sm:pb-20
+        sm:pt-32
+
+        lg:px-8
+      "
+    >
+      {/* =========================================
+          BACKGROUND
+      ========================================== */}
+
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          absolute
+          inset-0
+          overflow-hidden
+        "
+      >
+        <div
+          className="
+            absolute
+            inset-0
+            bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.20),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.18),transparent_40%)]
+          "
         />
-        
+
+        <div
+          className="
+            absolute
+            inset-0
+            opacity-[0.10]
+            bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIwLjUiIG9wYWNpdHk9IjAuMyIvPjwvc3ZnPg==')]
+          "
+        />
+
+        {/* =======================================
+            FLOATING SHAPE LEFT
+        ======================================== */}
+
         <motion.div
-          className="absolute bottom-20 right-20 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.4, 0.2, 0.4],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
+          className="
+            absolute
+            left-[8%]
+            top-[18%]
+            hidden
+            h-64
+            w-64
+            rounded-full
+            bg-blue-400/10
+            blur-3xl
+
+            md:block
+          "
+          animate={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  scale: [1, 1.12, 1],
+
+                  x: [0, 14, 0],
+
+                  y: [0, -12, 0],
+                }
+          }
+          transition={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  duration: 12,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }
+          }
+        />
+
+        {/* =======================================
+            FLOATING SHAPE RIGHT
+        ======================================== */}
+
+        <motion.div
+          className="
+            absolute
+            bottom-[12%]
+            right-[8%]
+            hidden
+            h-72
+            w-72
+            rounded-full
+            bg-cyan-400/10
+            blur-3xl
+
+            md:block
+          "
+          animate={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  scale: [1.08, 1, 1.08],
+
+                  x: [0, -12, 0],
+
+                  y: [0, 14, 0],
+                }
+          }
+          transition={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  duration: 14,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }
+          }
         />
       </div>
 
-      <div className="relative w-full max-w-6xl mx-auto px-6 text-center">
+      {/* =========================================
+          CONTENT
+      ========================================== */}
+
+      <div
+        className="
+          relative
+          z-10
+          mx-auto
+          w-full
+          max-w-5xl
+          text-center
+        "
+      >
+        {/* =======================================
+            BADGE
+        ======================================== */}
+
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-6"
+          initial={
+            shouldReduceMotion
+              ? false
+              : {
+                  opacity: 0,
+                  y: 12,
+                }
+          }
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.6,
+          }}
+          className="
+            mb-6
+            inline-flex
+            items-center
+            gap-2
+            rounded-full
+            border
+            border-white/15
+            bg-white/10
+            px-4
+            py-2
+            backdrop-blur-md
+          "
         >
           <IoNewspaperOutline className="text-white" />
-          <span className="text-sm font-medium text-white">Berita & Artikel</span>
+
+          <span
+            className="
+              text-xs
+              font-semibold
+              text-white
+
+              sm:text-sm
+            "
+          >
+            Berita & Artikel
+          </span>
         </motion.div>
+
+        {/* =======================================
+            TITLE
+        ======================================== */}
 
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight text-white"
+          initial={
+            shouldReduceMotion
+              ? false
+              : {
+                  opacity: 0,
+                  y: 18,
+                }
+          }
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.65,
+            delay: shouldReduceMotion ? 0 : 0.08,
+          }}
+          className="
+            mx-auto
+            max-w-4xl
+            text-4xl
+            font-bold
+            leading-[1.08]
+            tracking-tight
+            text-white
+
+            sm:text-5xl
+            md:text-6xl
+            lg:text-7xl
+          "
         >
-          BERITA <span className="text-blue-300">TERKINI,</span> INFORMASI TERPERCAYA!
+          Informasi Terkini
+          <span
+            className="
+              mx-2
+              bg-gradient-to-r
+              from-cyan-300
+              to-blue-300
+              bg-clip-text
+              text-transparent
+            "
+          >
+            Seputar
+          </span>
+          HMPTI
         </motion.h1>
-        
+
+        {/* =======================================
+            DESCRIPTION
+        ======================================== */}
+
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="text-lg text-white/90 max-w-3xl mx-auto uppercase tracking-wide"
+          initial={
+            shouldReduceMotion
+              ? false
+              : {
+                  opacity: 0,
+                  y: 18,
+                }
+          }
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.65,
+            delay: shouldReduceMotion ? 0 : 0.16,
+          }}
+          className="
+            mx-auto
+            mt-6
+            max-w-2xl
+            text-sm
+            leading-7
+            text-blue-50/80
+
+            sm:text-base
+
+            md:text-lg
+            md:leading-8
+          "
         >
-          Selalu Update dengan Kabar Terbaru di Dunia Teknologi dan Kampus!
+          Ikuti berita, informasi, perkembangan teknologi, dan berbagai kabar terbaru dari HMPTI Universitas Duta Bangsa.
         </motion.p>
 
-        {/* Scroll indicator */}
+        {/* =======================================
+            CTA
+        ======================================== */}
+
         <motion.div
-          initial={{ opacity: 0 }}
-     
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          initial={
+            shouldReduceMotion
+              ? false
+              : {
+                  opacity: 0,
+                  y: 16,
+                }
+          }
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.6,
+            delay: shouldReduceMotion ? 0 : 0.24,
+          }}
+          className="mt-8"
         >
-          <div className="w-6 h-10 border-2 border-white/50 rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-white/70 rounded-full mt-2"></div>
-          </div>
+          <a
+            href="#daftar-berita"
+            className="
+              inline-flex
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              bg-white
+              px-6
+              py-3
+              text-sm
+              font-semibold
+              text-blue-900
+              transition-all
+
+              hover:-translate-y-0.5
+              hover:bg-blue-50
+            "
+          >
+            Lihat Berita
+            <FiArrowRight />
+          </a>
         </motion.div>
       </div>
+
+      {/* =========================================
+          SCROLL INDICATOR
+      ========================================== */}
+
+      <motion.div
+        aria-hidden="true"
+        initial={{
+          opacity: 0,
+        }}
+        animate={
+          shouldReduceMotion
+            ? {
+                opacity: 1,
+              }
+            : {
+                opacity: 1,
+
+                y: [0, 8, 0],
+              }
+        }
+        transition={
+          shouldReduceMotion
+            ? {
+                duration: 0.4,
+                delay: 0.6,
+              }
+            : {
+                opacity: {
+                  duration: 0.4,
+                  delay: 0.6,
+                },
+
+                y: {
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                },
+              }
+        }
+        className="
+          absolute
+          bottom-5
+          left-1/2
+          hidden
+          -translate-x-1/2
+
+          sm:block
+        "
+      >
+        <div
+          className="
+            flex
+            h-9
+            w-5
+            justify-center
+            rounded-full
+            border
+            border-white/30
+          "
+        >
+          <div
+            className="
+              mt-2
+              h-2
+              w-1
+              rounded-full
+              bg-white/70
+            "
+          />
+        </div>
+      </motion.div>
     </section>
   );
 }
 
-function NewsContent() {
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(0);
-  const newsPerPage = 8;
-  const router = useRouter();
+// =========================================================
+// NEWS VIEW
+// =========================================================
 
-  interface NewsItem {
-    id: string;
-    titleNews: string;
-    descriptionNews: string;
-    writterNews: string;
-    categoryNews?: string;
-    imageUrl: string;
-    dateCreated: string;
-    createdAt: string | number | Date;
-  }
+function NewsView() {
+  const shouldReduceMotion = useReducedMotion();
+
+  const [news, setNews] = useState<NewsItem[]>([]);
+
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const [retryKey, setRetryKey] = useState(0);
+
+  // =======================================================
+  // FETCH
+  // =======================================================
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchNews = async () => {
       try {
-        const q = query(newsCollection, orderBy("dateCreated", "desc"));
-        const newsSnapshot = await getDocs(q);
-        const newsList = newsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as NewsItem[];
+        setLoading(true);
 
-        setNews(newsList);
-      } catch (error) {
-        console.error("Error fetching news:", error);
+        setError(null);
+
+        const snapshot = await getDocs(newsCollection);
+
+        const newsList = snapshot.docs.map(
+          (document) =>
+            ({
+              id: document.id,
+
+              ...document.data(),
+            }) as NewsItem,
+        );
+
+        // =========================================
+        // SORT DATE
+        // =========================================
+
+        const sortedNews = [...newsList].sort((a, b) => getNewsTimestamp(b) - getNewsTimestamp(a));
+
+        if (isMounted) {
+          setNews(sortedNews);
+
+          setCurrentPage(0);
+        }
+      } catch (fetchError) {
+        console.error("Error fetching news:", fetchError);
+
+        if (isMounted) {
+          setError("Gagal memuat data berita. Silakan coba kembali.");
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchNews();
-  }, []);
+    void fetchNews();
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
-  const startIndex = currentPage * newsPerPage;
-  const selectedNews = news.slice(startIndex, startIndex + newsPerPage);
-  const totalPages = Math.ceil(news.length / newsPerPage);
-
-  const categoryColor = (category?: string) => {
-    const colors: Record<string, string> = {
-      'Acara': 'bg-blue-100 text-blue-800',
-      'Pengumuman': 'bg-purple-100 text-purple-800',
-      'Prestasi': 'bg-green-100 text-green-800',
-      'Teknologi': 'bg-cyan-100 text-cyan-800',
-      'Pendidikan': 'bg-indigo-100 text-indigo-800',
-      'Hiburan': 'bg-orange-100 text-orange-800',
-      'default': 'bg-gray-100 text-gray-800'
+    return () => {
+      isMounted = false;
     };
-    
-    return colors[category || 'default'] || colors.default;
+  }, [retryKey]);
+
+  // =======================================================
+  // PAGINATION
+  // =======================================================
+
+  const totalPages = Math.ceil(news.length / NEWS_PER_PAGE);
+
+  const selectedNews = useMemo(() => {
+    const startIndex = currentPage * NEWS_PER_PAGE;
+
+    return news.slice(startIndex, startIndex + NEWS_PER_PAGE);
+  }, [currentPage, news]);
+
+  const changePage = (page: number) => {
+    if (page < 0 || page >= totalPages || page === currentPage) {
+      return;
+    }
+
+    setCurrentPage(page);
+
+    window.requestAnimationFrame(() => {
+      document.getElementById("daftar-berita")?.scrollIntoView({
+        behavior: shouldReduceMotion ? "auto" : "smooth",
+
+        block: "start",
+      });
+    });
   };
+
+  // =======================================================
+  // RENDER
+  // =======================================================
 
   return (
-    <section className="relative w-full py-20 bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
-      
-      {/* Background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2QxZDVmMSIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=')]"></div>
-        
-        <motion.div
-          className="absolute top-20 right-20 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        
-        <motion.div
-          className="absolute bottom-20 left-20 w-80 h-80 bg-indigo-300/15 rounded-full blur-3xl"
-          animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.4, 0.2, 0.4],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      </div>
+    <section
+      id="daftar-berita"
+      className="
+        relative
+        scroll-mt-20
+        overflow-hidden
+        bg-gradient-to-br
+        from-gray-50
+        via-white
+        to-blue-50/30
+        px-4
+        py-14
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Header Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          whileInView={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.5 }} 
-          viewport={{ once: true }} 
-          className="text-center mb-16"
+        sm:px-6
+        sm:py-16
+
+        lg:px-8
+        lg:py-20
+      "
+    >
+      <NewsBackground />
+
+      <div
+        className="
+          relative
+          z-10
+          mx-auto
+          max-w-7xl
+        "
+      >
+        {/* =========================================
+            HEADER
+        ========================================== */}
+
+        <motion.div
+          initial={
+            shouldReduceMotion
+              ? false
+              : {
+                  opacity: 0,
+                  y: 20,
+                }
+          }
+          whileInView={{
+            opacity: 1,
+            y: 0,
+          }}
+          viewport={{
+            once: true,
+            amount: 0.15,
+          }}
+          transition={{
+            duration: 0.5,
+          }}
+          className="
+            mx-auto
+            mb-10
+            max-w-3xl
+            text-center
+
+            sm:mb-12
+          "
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-100 mb-6">
-            <IoSparkles className="text-blue-500" />
-            <span className="text-sm font-medium text-blue-700">Update Terbaru</span>
+          <div
+            className="
+              mb-5
+              inline-flex
+              items-center
+              gap-2
+              rounded-full
+              border
+              border-blue-100
+              bg-blue-50
+              px-4
+              py-2
+            "
+          >
+            <IoNewspaperOutline className="text-blue-500" />
+
+            <span
+              className="
+                text-xs
+                font-semibold
+                text-blue-700
+
+                sm:text-sm
+              "
+            >
+              Semua Berita
+            </span>
           </div>
-          
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+
+          <h2
+            className="
+              text-3xl
+              font-bold
+              tracking-tight
+              text-gray-900
+
+              sm:text-4xl
+
+              lg:text-5xl
+            "
+          >
+            <span
+              className="
+                bg-gradient-to-r
+                from-blue-600
+                to-cyan-500
+                bg-clip-text
+                text-transparent
+              "
+            >
               Berita
-            </span>{' '}
-            HMPTI
+            </span>
+
+            {" HMPTI"}
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Update terbaru dari kegiatan dan perkembangan HMPTI Universitas Duta Bangsa
+
+          <p
+            className="
+              mx-auto
+              mt-4
+              max-w-2xl
+              text-sm
+              leading-7
+              text-gray-600
+
+              sm:text-base
+
+              md:text-lg
+            "
+          >
+            Temukan informasi terbaru, kabar organisasi, perkembangan, dan berbagai artikel menarik dari HMPTI Universitas Duta Bangsa.
           </p>
         </motion.div>
 
-        {/* News Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: newsPerPage }).map((_, index) => (
-              <motion.div
-                key={index}
-                className="bg-white rounded-2xl shadow-lg shadow-gray-200/50 overflow-hidden border border-gray-100"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <div className="aspect-video bg-gray-200 animate-pulse" />
-                <div className="p-6 space-y-3">
-                  <div className="h-6 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
+        {/* =========================================
+            LOADING
+        ========================================== */}
+
+        {loading && <NewsSkeleton />}
+
+        {/* =========================================
+            ERROR
+        ========================================== */}
+
+        {!loading && error && <NewsError message={error} onRetry={() => setRetryKey((value) => value + 1)} />}
+
+        {/* =========================================
+            CONTENT
+        ========================================== */}
+
+        {!loading && !error && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <AnimatePresence>
-                {selectedNews.map((newsItem) => (
-                  <motion.div
-                    key={newsItem.id}
-                    className="bg-white rounded-2xl shadow-lg shadow-gray-200/50 overflow-hidden border border-gray-100 hover:shadow-xl hover:shadow-blue-200/30 hover:-translate-y-2 transition-all duration-300 cursor-pointer group"
-                    onClick={() => router.push(`/pages/news/${newsItem.id}`)}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    layout
-                  >
-                    <div className="relative aspect-video">
-                      <Image 
-                        src={newsItem.imageUrl} 
-                        alt={newsItem.titleNews} 
-                        fill 
-                        className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
-                      />
-                      {newsItem.categoryNews && (
-                        <div className="absolute top-4 left-4">
-                          <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${categoryColor(newsItem.categoryNews)}`}>
-                            {newsItem.categoryNews}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-lg font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                        {newsItem.titleNews}
-                      </h3>
-                      <p className="text-gray-600 text-sm line-clamp-3 mb-4 leading-relaxed">
-                        {newsItem.descriptionNews}
-                      </p>
-                      <div className="flex items-center justify-between border-t border-gray-100 pt-4">
-                        <div className="flex items-center gap-2">
-                          <div className="bg-gray-100 p-2 rounded-full">
-                            <FiUser className="text-gray-600 text-sm" />
-                          </div>
-                          <span className="text-sm text-gray-600">{newsItem.writterNews}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <FiCalendar className="text-blue-500" size={14} />
-                          <span>{formatDate(newsItem.dateCreated)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+            {selectedNews.length > 0 && (
+              <motion.div
+                key={currentPage}
+                initial={
+                  shouldReduceMotion
+                    ? false
+                    : {
+                        opacity: 0,
+                        y: 12,
+                      }
+                }
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                transition={{
+                  duration: 0.35,
+                }}
+                className="
+                    grid
+                    grid-cols-1
+                    gap-5
 
-            {/* Empty state */}
-            {news.length === 0 && !loading && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="text-center py-16"
+                    sm:grid-cols-2
+                    sm:gap-6
+
+                    lg:grid-cols-3
+
+                    xl:grid-cols-4
+                  "
               >
-                <div className="bg-white rounded-2xl p-8 shadow-lg shadow-gray-200/50 border border-gray-100 inline-block">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <IoNewspaperOutline className="text-gray-400 text-2xl" />
-                  </div>
-                  <p className="text-gray-500">Belum ada berita yang tersedia</p>
-                  <p className="text-gray-400 text-sm mt-2">Berita terbaru akan segera hadir</p>
-                </div>
+                {selectedNews.map((newsItem, index) => (
+                  <NewsCard key={newsItem.id} news={newsItem} index={index} />
+                ))}
               </motion.div>
             )}
 
-            {/* Pagination */}
-            {news.length > newsPerPage && (
-              <div className="flex justify-center items-center mt-12 gap-4">
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  disabled={currentPage === 0}
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  className={`p-3 rounded-full shadow-lg ${currentPage === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-white text-blue-600 hover:bg-blue-50 border border-gray-200"}`}
-                >
-                  <FiChevronLeft size={20} />
-                </motion.button>
+            {/* =================================
+                  EMPTY
+              ================================== */}
 
-                <div className="flex items-center gap-2">
-                  {Array.from({ length: Math.min(totalPages, 5) }).map((_, idx) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = idx;
-                    } else if (currentPage < 2) {
-                      pageNum = idx;
-                    } else if (currentPage > totalPages - 3) {
-                      pageNum = totalPages - 5 + idx;
-                    } else {
-                      pageNum = currentPage - 2 + idx;
-                    }
+            {news.length === 0 && <EmptyNewsState />}
 
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`w-10 h-10 rounded-full font-medium ${
-                          currentPage === pageNum 
-                            ? "bg-blue-600 text-white shadow-lg" 
-                            : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
-                        }`}
-                      >
-                        {pageNum + 1}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* =================================
+                  PAGINATION
+              ================================== */}
 
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  disabled={currentPage === totalPages - 1}
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  className={`p-3 rounded-full shadow-lg ${
-                    currentPage === totalPages - 1 
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed" 
-                      : "bg-white text-blue-600 hover:bg-blue-50 border border-gray-200"
-                  }`}
-                >
-                  <FiChevronRight size={20} />
-                </motion.button>
-              </div>
-            )}
+            {totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} onChange={changePage} />}
           </>
         )}
       </div>
@@ -377,11 +926,851 @@ function NewsContent() {
   );
 }
 
-export default function NewsPage() {
+// =========================================================
+// NEWS BACKGROUND
+// =========================================================
+
+function NewsBackground() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <main className="min-h-screen">
-      <HeroViewNews />
-      <NewsContent />
-    </main>
+    <div
+      aria-hidden="true"
+      className="
+        pointer-events-none
+        absolute
+        inset-0
+        overflow-hidden
+      "
+    >
+      {/* =========================================
+          GRID
+      ========================================== */}
+
+      <div
+        className="
+          absolute
+          inset-0
+          opacity-[0.08]
+          bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2QxZDVmMSIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=')]
+        "
+      />
+
+      {/* =========================================
+          RIGHT BLUR
+      ========================================== */}
+
+      <motion.div
+        className="
+          absolute
+          right-[7%]
+          top-[10%]
+          hidden
+          h-64
+          w-64
+          rounded-full
+          bg-blue-200/15
+          blur-3xl
+
+          md:block
+        "
+        animate={
+          shouldReduceMotion
+            ? undefined
+            : {
+                scale: [1, 1.1, 1],
+              }
+        }
+        transition={
+          shouldReduceMotion
+            ? undefined
+            : {
+                duration: 12,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }
+        }
+      />
+
+      {/* =========================================
+          LEFT BLUR
+      ========================================== */}
+
+      <motion.div
+        className="
+          absolute
+          bottom-[8%]
+          left-[6%]
+          hidden
+          h-72
+          w-72
+          rounded-full
+          bg-cyan-300/10
+          blur-3xl
+
+          md:block
+        "
+        animate={
+          shouldReduceMotion
+            ? undefined
+            : {
+                scale: [1.08, 1, 1.08],
+              }
+        }
+        transition={
+          shouldReduceMotion
+            ? undefined
+            : {
+                duration: 14,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }
+        }
+      />
+    </div>
+  );
+}
+
+// =========================================================
+// NEWS CARD
+// =========================================================
+
+function NewsCard({
+  news,
+  index,
+}: {
+  news: NewsItem;
+
+  index: number;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <motion.article
+      initial={
+        shouldReduceMotion
+          ? false
+          : {
+              opacity: 0,
+              y: 18,
+            }
+      }
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      transition={{
+        duration: 0.45,
+
+        delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.2),
+      }}
+      className="h-full"
+    >
+      <Link
+        href={`/pages/news/${news.id}`}
+        className="
+          group
+          flex
+          h-full
+          flex-col
+          overflow-hidden
+          rounded-2xl
+          border
+          border-gray-100
+          bg-white
+          shadow-sm
+          transition-all
+          duration-300
+
+          hover:-translate-y-1
+          hover:shadow-xl
+          hover:shadow-blue-100/50
+        "
+      >
+        {/* =========================================
+            IMAGE
+        ========================================== */}
+
+        <div
+          className="
+            relative
+            aspect-[4/3]
+            overflow-hidden
+            bg-gray-100
+          "
+        >
+          {news.imageUrl ? (
+            <Image
+              src={news.imageUrl}
+              alt={news.titleNews}
+              fill
+              sizes="
+                (max-width: 639px) 92vw,
+                (max-width: 1023px) 46vw,
+                (max-width: 1279px) 30vw,
+                285px
+              "
+              className="
+                object-cover
+                transition-transform
+                duration-500
+
+                group-hover:scale-[1.035]
+              "
+            />
+          ) : (
+            <NewsImagePlaceholder />
+          )}
+
+          {/* =======================================
+              IMAGE OVERLAY
+          ======================================== */}
+
+          <div
+            className="
+              pointer-events-none
+              absolute
+              inset-0
+              bg-gradient-to-t
+              from-black/20
+              via-transparent
+              to-transparent
+            "
+          />
+
+          {/* =======================================
+              CATEGORY
+          ======================================== */}
+
+          {news.categoryNews && (
+            <div
+              className="
+                absolute
+                left-3
+                top-3
+              "
+            >
+              <span
+                className="
+                  rounded-full
+                  bg-gray-950/75
+                  px-2.5
+                  py-1
+                  text-[11px]
+                  font-semibold
+                  text-white
+                  backdrop-blur-md
+                "
+              >
+                {news.categoryNews}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* =========================================
+            CONTENT
+        ========================================== */}
+
+        <div
+          className="
+            flex
+            flex-1
+            flex-col
+            p-5
+          "
+        >
+          {/* =======================================
+              DATE
+          ======================================== */}
+
+          <div
+            className="
+              mb-3
+              inline-flex
+              w-fit
+              items-center
+              gap-2
+              rounded-full
+              bg-gray-50
+              px-3
+              py-1.5
+              text-xs
+              font-medium
+              text-gray-500
+            "
+          >
+            <FiCalendar className="text-blue-500" />
+
+            {formatNewsDate(news)}
+          </div>
+
+          {/* =======================================
+              TITLE
+          ======================================== */}
+
+          <h3
+            className="
+              line-clamp-2
+              text-lg
+              font-bold
+              leading-snug
+              text-gray-900
+              transition-colors
+
+              group-hover:text-blue-600
+            "
+          >
+            {news.titleNews}
+          </h3>
+
+          {/* =======================================
+              AUTHOR
+          ======================================== */}
+
+          {news.writterNews && (
+            <div
+              className="
+                mt-3
+                flex
+                items-center
+                gap-2
+                text-xs
+                text-gray-500
+              "
+            >
+              <FiUser
+                className="
+                  shrink-0
+                  text-blue-500
+                "
+              />
+
+              <span
+                className="
+                  truncate
+                "
+              >
+                {news.writterNews}
+              </span>
+            </div>
+          )}
+
+          {/* =======================================
+              DESCRIPTION
+          ======================================== */}
+
+          <p
+            className="
+              mt-3
+              line-clamp-3
+              text-sm
+              leading-6
+              text-gray-600
+            "
+          >
+            {news.descriptionNews}
+          </p>
+
+          {/* =======================================
+              DETAIL
+          ======================================== */}
+
+          <div
+            className="
+              mt-auto
+              flex
+              items-center
+              pt-5
+              text-sm
+              font-semibold
+              text-blue-600
+            "
+          >
+            Baca selengkapnya
+            <FiArrowRight
+              className="
+                ml-1.5
+                transition-transform
+
+                group-hover:translate-x-1
+              "
+            />
+          </div>
+        </div>
+      </Link>
+    </motion.article>
+  );
+}
+
+// =========================================================
+// IMAGE PLACEHOLDER
+// =========================================================
+
+function NewsImagePlaceholder() {
+  return (
+    <div
+      className="
+        flex
+        h-full
+        w-full
+        items-center
+        justify-center
+        bg-gradient-to-br
+        from-blue-50
+        to-cyan-100
+      "
+    >
+      <IoNewspaperOutline
+        className="
+          text-4xl
+          text-blue-400
+        "
+      />
+    </div>
+  );
+}
+
+// =========================================================
+// SKELETON
+// =========================================================
+
+function NewsSkeleton() {
+  return (
+    <div
+      className="
+        grid
+        grid-cols-1
+        gap-5
+
+        sm:grid-cols-2
+        sm:gap-6
+
+        lg:grid-cols-3
+
+        xl:grid-cols-4
+      "
+    >
+      {Array.from({
+        length: NEWS_PER_PAGE,
+      }).map((_, index) => (
+        <div
+          key={index}
+          className="
+              overflow-hidden
+              rounded-2xl
+              border
+              border-gray-100
+              bg-white
+              shadow-sm
+            "
+        >
+          <div
+            className="
+                aspect-[4/3]
+                animate-pulse
+                bg-gray-200
+              "
+          />
+
+          <div
+            className="
+                space-y-3
+                p-5
+              "
+          >
+            <div
+              className="
+                  h-7
+                  w-2/3
+                  animate-pulse
+                  rounded-full
+                  bg-gray-100
+                "
+            />
+
+            <div
+              className="
+                  h-5
+                  animate-pulse
+                  rounded
+                  bg-gray-200
+                "
+            />
+
+            <div
+              className="
+                  h-4
+                  w-2/5
+                  animate-pulse
+                  rounded
+                  bg-gray-100
+                "
+            />
+
+            <div
+              className="
+                  h-4
+                  animate-pulse
+                  rounded
+                  bg-gray-100
+                "
+            />
+
+            <div
+              className="
+                  h-4
+                  w-4/5
+                  animate-pulse
+                  rounded
+                  bg-gray-100
+                "
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// =========================================================
+// ERROR
+// =========================================================
+
+function NewsError({
+  message,
+  onRetry,
+}: {
+  message: string;
+
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className="
+        mx-auto
+        max-w-md
+        rounded-3xl
+        border
+        border-red-100
+        bg-white
+        p-6
+        text-center
+        shadow-sm
+
+        sm:p-8
+      "
+    >
+      <div
+        className="
+          mx-auto
+          mb-4
+          flex
+          h-14
+          w-14
+          items-center
+          justify-center
+          rounded-2xl
+          bg-red-50
+        "
+      >
+        <IoNewspaperOutline
+          className="
+            text-2xl
+            text-red-500
+          "
+        />
+      </div>
+
+      <h3
+        className="
+          text-lg
+          font-bold
+          text-gray-900
+        "
+      >
+        Berita Gagal Dimuat
+      </h3>
+
+      <p
+        className="
+          mt-2
+          text-sm
+          leading-6
+          text-gray-500
+        "
+      >
+        {message}
+      </p>
+
+      <button
+        type="button"
+        onClick={onRetry}
+        className="
+          mt-5
+          rounded-xl
+          bg-gray-900
+          px-5
+          py-2.5
+          text-sm
+          font-semibold
+          text-white
+          transition-colors
+
+          hover:bg-gray-800
+        "
+      >
+        Coba Lagi
+      </button>
+    </div>
+  );
+}
+
+// =========================================================
+// EMPTY
+// =========================================================
+
+function EmptyNewsState() {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      initial={
+        shouldReduceMotion
+          ? false
+          : {
+              opacity: 0,
+              y: 16,
+            }
+      }
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      className="
+        mx-auto
+        max-w-md
+        rounded-3xl
+        border
+        border-gray-100
+        bg-white
+        p-7
+        text-center
+        shadow-sm
+      "
+    >
+      <div
+        className="
+          mx-auto
+          mb-4
+          flex
+          h-14
+          w-14
+          items-center
+          justify-center
+          rounded-2xl
+          bg-gray-100
+        "
+      >
+        <IoNewspaperOutline
+          className="
+            text-2xl
+            text-gray-400
+          "
+        />
+      </div>
+
+      <h3
+        className="
+          text-lg
+          font-bold
+          text-gray-800
+        "
+      >
+        Belum Ada Berita
+      </h3>
+
+      <p
+        className="
+          mt-2
+          text-sm
+          leading-6
+          text-gray-500
+        "
+      >
+        Berita dan informasi terbaru HMPTI akan segera tersedia di halaman ini.
+      </p>
+    </motion.div>
+  );
+}
+
+// =========================================================
+// PAGINATION
+// =========================================================
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onChange,
+}: {
+  currentPage: number;
+
+  totalPages: number;
+
+  onChange: (page: number) => void;
+}) {
+  const pages = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from(
+        {
+          length: totalPages,
+        },
+        (_, index) => index,
+      );
+    }
+
+    let start = Math.max(currentPage - 2, 0);
+
+    if (start + 5 > totalPages) {
+      start = totalPages - 5;
+    }
+
+    return Array.from(
+      {
+        length: 5,
+      },
+      (_, index) => start + index,
+    );
+  }, [currentPage, totalPages]);
+
+  return (
+    <nav
+      aria-label="Navigasi halaman berita"
+      className="
+        mt-10
+        flex
+        flex-wrap
+        items-center
+        justify-center
+        gap-2
+
+        sm:mt-12
+        sm:gap-3
+      "
+    >
+      {/* =========================================
+          PREVIOUS
+      ========================================== */}
+
+      <button
+        type="button"
+        aria-label="Halaman sebelumnya"
+        disabled={currentPage === 0}
+        onClick={() => onChange(currentPage - 1)}
+        className="
+          flex
+          h-10
+          w-10
+          items-center
+          justify-center
+          rounded-xl
+          border
+          border-gray-200
+          bg-white
+          text-blue-600
+          shadow-sm
+          transition-all
+
+          hover:bg-blue-50
+
+          disabled:cursor-not-allowed
+          disabled:bg-gray-100
+          disabled:text-gray-300
+          disabled:shadow-none
+        "
+      >
+        <FiChevronLeft />
+      </button>
+
+      {/* =========================================
+          PAGE NUMBER
+      ========================================== */}
+
+      {pages.map((page) => (
+        <button
+          key={page}
+          type="button"
+          aria-label={`Halaman ${page + 1}`}
+          aria-current={currentPage === page ? "page" : undefined}
+          onClick={() => onChange(page)}
+          className={`
+              flex
+              h-10
+              min-w-10
+              items-center
+              justify-center
+              rounded-xl
+              px-3
+              text-sm
+              font-semibold
+              transition-all
+
+              ${
+                currentPage === page
+                  ? `
+                    bg-blue-600
+                    text-white
+                    shadow-md
+                    shadow-blue-500/20
+                  `
+                  : `
+                    border
+                    border-gray-200
+                    bg-white
+                    text-gray-600
+
+                    hover:bg-gray-50
+                  `
+              }
+            `}
+        >
+          {page + 1}
+        </button>
+      ))}
+
+      {/* =========================================
+          NEXT
+      ========================================== */}
+
+      <button
+        type="button"
+        aria-label="Halaman berikutnya"
+        disabled={currentPage === totalPages - 1}
+        onClick={() => onChange(currentPage + 1)}
+        className="
+          flex
+          h-10
+          w-10
+          items-center
+          justify-center
+          rounded-xl
+          border
+          border-gray-200
+          bg-white
+          text-blue-600
+          shadow-sm
+          transition-all
+
+          hover:bg-blue-50
+
+          disabled:cursor-not-allowed
+          disabled:bg-gray-100
+          disabled:text-gray-300
+          disabled:shadow-none
+        "
+      >
+        <FiChevronRight />
+      </button>
+    </nav>
   );
 }

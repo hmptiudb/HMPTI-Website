@@ -1,379 +1,895 @@
 "use client";
-import { app } from "@/lib/firebase";
-import { collection, getDocs, getFirestore, orderBy, query } from "firebase/firestore";
-import { AnimatePresence, motion } from "framer-motion";
+
+import { db } from "@/lib/firebase";
+
+import { collection, getDocs, type Timestamp } from "firebase/firestore";
+
+import { motion, useReducedMotion } from "framer-motion";
+
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { FiArrowRight, FiCalendar, FiChevronLeft, FiChevronRight, FiExternalLink } from "react-icons/fi";
-import { IoSparkles, IoCalendarOutline } from "react-icons/io5";
+import Link from "next/link";
+
+import { useEffect, useMemo, useState } from "react";
+
+import { FiArrowRight, FiCalendar, FiChevronLeft, FiChevronRight, FiClock, FiMapPin } from "react-icons/fi";
+
+import { IoCalendarOutline } from "react-icons/io5";
+
+// =========================================================
+// TYPES
+// =========================================================
 
 interface Event {
   id: string;
+
   eventName: string;
+
+  /**
+   * Field tanggal lama.
+   *
+   * Tetap dipakai agar data lama
+   * masih dapat ditampilkan.
+   */
   dateEvent: string;
+
+  /**
+   * Field tanggal baru dari admin.
+   *
+   * Digunakan untuk sorting tanggal
+   * dengan lebih akurat.
+   */
+  dateEventAt?: Timestamp;
+
   imageUrl: string;
+
   descriptionEvent: string;
-  linkForm: string;
+
+  linkForm?: string;
+
   statusEvent?: string;
+
   categoryEvent?: string;
+
+  categoryAudiens?: string;
+
   timeEvent?: string;
+
+  organizer?: string;
+
+  location?: string;
+
+  capacity?: number | null;
 }
 
-function HeroViewEvent() {
+// =========================================================
+// CONSTANTS
+// =========================================================
+
+const EVENTS_PER_PAGE = 8;
+
+// =========================================================
+// DATE HELPERS
+// =========================================================
+
+function parseEventDate(value: string): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalizedValue = value.trim();
+
+  // =======================================================
+  // FORMAT BARU: YYYY-MM-DD
+  // =======================================================
+
+  const isoMatch = normalizedValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+
+    const parsedDate = new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0);
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return parsedDate;
+    }
+  }
+
+  // =======================================================
+  // FORMAT LAMA:
+  // DD/MM/YYYY
+  // DD-MM-YYYY
+  // =======================================================
+
+  const legacyMatch = normalizedValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+
+  if (legacyMatch) {
+    const [, day, month, year] = legacyMatch;
+
+    const parsedDate = new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0);
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return parsedDate;
+    }
+  }
+
+  // =======================================================
+  // FALLBACK
+  // =======================================================
+
+  const fallbackDate = new Date(normalizedValue);
+
+  if (Number.isNaN(fallbackDate.getTime())) {
+    return null;
+  }
+
+  return fallbackDate;
+}
+
+function formatEventDate(value: string) {
+  const date = parseEventDate(value);
+
+  if (!date) {
+    return value;
+  }
+
+  return date.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function getEventTimestamp(event: Event) {
+  /**
+   * Prioritas pertama:
+   * Timestamp baru dari Firestore.
+   */
+  if (event.dateEventAt && typeof event.dateEventAt.toMillis === "function") {
+    return event.dateEventAt.toMillis();
+  }
+
+  /**
+   * Fallback untuk event lama.
+   */
+  return parseEventDate(event.dateEvent)?.getTime() ?? 0;
+}
+
+// =========================================================
+// STATUS HELPERS
+// =========================================================
+
+function getStatusLabel(status?: string) {
+  const normalized = status?.trim().toLowerCase();
+
+  if (normalized === "cooming soon" || normalized === "coming soon") {
+    return "Coming Soon";
+  }
+
+  if (normalized === "berlangsung" || normalized === "sedang berlangsung") {
+    return "Sedang Berlangsung";
+  }
+
+  return status?.trim() || "Belum Ditentukan";
+}
+
+function getStatusClass(status?: string) {
+  const normalized = status?.trim().toLowerCase();
+
+  if (normalized === "selesai") {
+    return `
+      border-green-100
+      bg-green-50
+      text-green-700
+    `;
+  }
+
+  if (normalized === "berlangsung" || normalized === "sedang berlangsung") {
+    return `
+      border-blue-100
+      bg-blue-50
+      text-blue-700
+    `;
+  }
+
+  if (normalized === "coming soon" || normalized === "cooming soon") {
+    return `
+      border-amber-100
+      bg-amber-50
+      text-amber-700
+    `;
+  }
+
+  if (normalized === "batal") {
+    return `
+      border-red-100
+      bg-red-50
+      text-red-700
+    `;
+  }
+
+  return `
+    border-gray-200
+    bg-gray-100
+    text-gray-600
+  `;
+}
+
+// =========================================================
+// PAGE
+// =========================================================
+
+export default function EventPage() {
   return (
-    <section className="relative w-full min-h-[60vh] flex items-center justify-center overflow-hidden">
-      {/* Background with overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-800/80 to-cyan-700/90"></div>
-      
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIwLjUiIG9wYWNpdHk9IjAuMyIvPjwvc3ZnPg==')]"></div>
-        
-        {/* Floating shapes */}
-        <motion.div
-          className="absolute top-20 left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
+    <main className="min-h-screen bg-white">
+      <HeroViewEvent />
+
+      <EventView />
+    </main>
+  );
+}
+
+// =========================================================
+// HERO
+// =========================================================
+
+function HeroViewEvent() {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <section
+      className="
+        relative
+        flex
+        min-h-[64svh]
+        w-full
+        items-center
+        justify-center
+        overflow-hidden
+        bg-gradient-to-br
+        from-blue-950
+        via-blue-900
+        to-cyan-900
+        px-4
+        pb-16
+        pt-28
+
+        sm:min-h-[68svh]
+        sm:px-6
+        sm:pb-20
+        sm:pt-32
+
+        lg:px-8
+      "
+    >
+      {/* =========================================
+          BACKGROUND
+      ========================================== */}
+
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          absolute
+          inset-0
+          overflow-hidden
+        "
+      >
+        <div
+          className="
+            absolute
+            inset-0
+            bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.20),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.18),transparent_40%)]
+          "
         />
-        
+
+        <div
+          className="
+            absolute
+            inset-0
+            opacity-[0.10]
+            bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIwLjUiIG9wYWNpdHk9IjAuMyIvPjwvc3ZnPg==')]
+          "
+        />
+
         <motion.div
-          className="absolute bottom-20 right-20 w-80 h-80 bg-cyan-400/10 rounded-full blur-3xl"
-          animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.4, 0.2, 0.4],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
+          className="
+            absolute
+            left-[8%]
+            top-[18%]
+            hidden
+            h-64
+            w-64
+            rounded-full
+            bg-blue-400/10
+            blur-3xl
+
+            md:block
+          "
+          animate={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  scale: [1, 1.12, 1],
+
+                  x: [0, 14, 0],
+
+                  y: [0, -12, 0],
+                }
+          }
+          transition={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  duration: 12,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }
+          }
+        />
+
+        <motion.div
+          className="
+            absolute
+            bottom-[12%]
+            right-[8%]
+            hidden
+            h-72
+            w-72
+            rounded-full
+            bg-cyan-400/10
+            blur-3xl
+
+            md:block
+          "
+          animate={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  scale: [1.08, 1, 1.08],
+
+                  x: [0, -12, 0],
+
+                  y: [0, 14, 0],
+                }
+          }
+          transition={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  duration: 14,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }
+          }
         />
       </div>
 
-      <div className="relative w-full max-w-6xl mx-auto px-6 text-center">
+      {/* =========================================
+          CONTENT
+      ========================================== */}
+
+      <div
+        className="
+          relative
+          z-10
+          mx-auto
+          w-full
+          max-w-5xl
+          text-center
+        "
+      >
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-6"
+          initial={{
+            opacity: 0,
+            y: 12,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.6,
+          }}
+          className="
+            mb-6
+            inline-flex
+            items-center
+            gap-2
+            rounded-full
+            border
+            border-white/15
+            bg-white/10
+            px-4
+            py-2
+            backdrop-blur-md
+          "
         >
-          <IoSparkles className="text-white" />
-          <span className="text-sm font-medium text-white">Event & Kegiatan</span>
+          <IoCalendarOutline className="text-white" />
+
+          <span
+            className="
+              text-xs
+              font-semibold
+              text-white
+
+              sm:text-sm
+            "
+          >
+            Event & Kegiatan
+          </span>
         </motion.div>
 
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight text-white"
+          initial={{
+            opacity: 0,
+            y: 18,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.65,
+            delay: 0.08,
+          }}
+          className="
+            mx-auto
+            max-w-4xl
+            text-4xl
+            font-bold
+            leading-[1.08]
+            tracking-tight
+            text-white
+
+            sm:text-5xl
+            md:text-6xl
+            lg:text-7xl
+          "
         >
-          BERSAMA MEMBANGUN <span className="text-cyan-300">MASA DEPAN</span> TEKNOLOGI
+          Bersama Membangun
+          <span
+            className="
+              mx-2
+              bg-gradient-to-r
+              from-cyan-300
+              to-blue-300
+              bg-clip-text
+              text-transparent
+            "
+          >
+            Masa Depan
+          </span>
+          Teknologi
         </motion.h1>
-        
+
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="text-lg text-white/90 max-w-3xl mx-auto uppercase tracking-wide"
+          initial={{
+            opacity: 0,
+            y: 18,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.65,
+            delay: 0.16,
+          }}
+          className="
+            mx-auto
+            mt-6
+            max-w-2xl
+            text-sm
+            leading-7
+            text-blue-50/80
+
+            sm:text-base
+
+            md:text-lg
+            md:leading-8
+          "
         >
-          Ikuti perkembangan terbaru, eksplorasi inovasi, dan jadi bagian dari perubahan!
+          Ikuti berbagai kegiatan HMPTI, eksplorasi inovasi, dan temukan pengalaman baru bersama komunitas teknologi.
         </motion.p>
 
-        {/* Scroll indicator */}
         <motion.div
-          initial={{ opacity: 0 }}
-   
-
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          initial={{
+            opacity: 0,
+            y: 16,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.6,
+            delay: 0.24,
+          }}
+          className="mt-8"
         >
-          <div className="w-6 h-10 border-2 border-white/50 rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-white/70 rounded-full mt-2"></div>
-          </div>
+          <a
+            href="#daftar-event"
+            className="
+              inline-flex
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              bg-white
+              px-6
+              py-3
+              text-sm
+              font-semibold
+              text-blue-900
+              transition-all
+
+              hover:-translate-y-0.5
+              hover:bg-blue-50
+            "
+          >
+            Lihat Event
+            <FiArrowRight />
+          </a>
         </motion.div>
       </div>
+
+      {/* =========================================
+          SCROLL INDICATOR
+      ========================================== */}
+
+      <motion.div
+        aria-hidden="true"
+        initial={{
+          opacity: 0,
+        }}
+        animate={
+          shouldReduceMotion
+            ? {
+                opacity: 1,
+              }
+            : {
+                opacity: 1,
+
+                y: [0, 8, 0],
+              }
+        }
+        transition={
+          shouldReduceMotion
+            ? {
+                duration: 0.4,
+                delay: 0.6,
+              }
+            : {
+                opacity: {
+                  duration: 0.4,
+                  delay: 0.6,
+                },
+
+                y: {
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                },
+              }
+        }
+        className="
+          absolute
+          bottom-5
+          left-1/2
+          hidden
+          -translate-x-1/2
+
+          sm:block
+        "
+      >
+        <div
+          className="
+            flex
+            h-9
+            w-5
+            justify-center
+            rounded-full
+            border
+            border-white/30
+          "
+        >
+          <div
+            className="
+              mt-2
+              h-2
+              w-1
+              rounded-full
+              bg-white/70
+            "
+          />
+        </div>
+      </motion.div>
     </section>
   );
 }
 
+// =========================================================
+// EVENT VIEW
+// =========================================================
+
 function EventView() {
+  const shouldReduceMotion = useReducedMotion();
+
   const [events, setEvents] = useState<Event[]>([]);
+
   const [currentPage, setCurrentPage] = useState(0);
+
   const [loading, setLoading] = useState(true);
-  const eventsPerPage = 8;
-  const router = useRouter();
-  const db = getFirestore(app);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchEvents = async () => {
       try {
-        const q = query(collection(db, "events"), orderBy("dateEvent", "desc"));
-        const eventSnapshot = await getDocs(q);
-        const eventList = eventSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Event[];
+        setLoading(true);
 
-        setEvents(eventList);
-      } catch (error) {
-        console.error("Error fetching events:", error);
+        setError(null);
+
+        const snapshot = await getDocs(collection(db, "events"));
+
+        const eventList = snapshot.docs.map(
+          (document) =>
+            ({
+              id: document.id,
+
+              ...document.data(),
+            }) as Event,
+        );
+
+        // =========================================
+        // SORT DATE
+        // =========================================
+
+        const sortedEvents = [...eventList].sort((a, b) => getEventTimestamp(b) - getEventTimestamp(a));
+
+        if (isMounted) {
+          setEvents(sortedEvents);
+
+          setCurrentPage(0);
+        }
+      } catch (err) {
+        console.error("Error fetching events:", err);
+
+        if (isMounted) {
+          setError("Gagal memuat data event. Silakan coba kembali.");
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
+
     fetchEvents();
-  }, [db]);
 
-  const startIndex = currentPage * eventsPerPage;
-  const selectedEvents = events.slice(startIndex, startIndex + eventsPerPage);
-  const totalPages = Math.ceil(events.length / eventsPerPage);
+    return () => {
+      isMounted = false;
+    };
+  }, [retryKey]);
 
-  const statusColor = (status?: string) => {
-    switch (status) {
-      case "Selesai":
-        return "bg-green-100 text-green-800";
-      case "Berlangsung":
-        return "bg-blue-100 text-blue-800";
-      case "Sedang Berlangsung":
-        return "bg-blue-100 text-blue-800";
-      case "Coming Soon":
-        return "bg-yellow-100 text-yellow-800";
-      case "Cooming Soon":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const totalPages = Math.ceil(events.length / EVENTS_PER_PAGE);
+
+  const selectedEvents = useMemo(() => {
+    const startIndex = currentPage * EVENTS_PER_PAGE;
+
+    return events.slice(startIndex, startIndex + EVENTS_PER_PAGE);
+  }, [currentPage, events]);
+
+  const changePage = (page: number) => {
+    if (page < 0 || page >= totalPages) {
+      return;
     }
-  };
 
-  const formatDate = (dateString: string) => {
-    try {
-      const [day, month, year] = dateString.split('/');
-      const date = new Date(`${year}-${month}-${day}`);
-      return date.toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
+    setCurrentPage(page);
+
+    window.requestAnimationFrame(() => {
+      document.getElementById("daftar-event")?.scrollIntoView({
+        behavior: shouldReduceMotion ? "auto" : "smooth",
+
+        block: "start",
       });
-    } catch {
-      return dateString;
-    }
+    });
   };
 
   return (
-    <section className="relative w-full py-20 bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
-      
-      {/* Background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2QxZDVmMSIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=')]"></div>
-        
-        <motion.div
-          className="absolute top-20 right-20 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        
-        <motion.div
-          className="absolute bottom-20 left-20 w-80 h-80 bg-cyan-300/15 rounded-full blur-3xl"
-          animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.4, 0.2, 0.4],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      </div>
+    <section
+      id="daftar-event"
+      className="
+        relative
+        scroll-mt-20
+        overflow-hidden
+        bg-gradient-to-br
+        from-gray-50
+        via-white
+        to-blue-50/30
+        px-4
+        py-14
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Header Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          whileInView={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.5 }} 
-          className="text-center mb-16"
+        sm:px-6
+        sm:py-16
+
+        lg:px-8
+        lg:py-20
+      "
+    >
+      <EventBackground />
+
+      <div
+        className="
+          relative
+          z-10
+          mx-auto
+          max-w-7xl
+        "
+      >
+        {/* =========================================
+            HEADER
+        ========================================== */}
+
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 20,
+          }}
+          whileInView={{
+            opacity: 1,
+            y: 0,
+          }}
+          viewport={{
+            once: true,
+            amount: 0.15,
+          }}
+          transition={{
+            duration: 0.5,
+          }}
+          className="
+            mx-auto
+            mb-10
+            max-w-3xl
+            text-center
+
+            sm:mb-12
+          "
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-100 mb-6">
+          <div
+            className="
+              mb-5
+              inline-flex
+              items-center
+              gap-2
+              rounded-full
+              border
+              border-blue-100
+              bg-blue-50
+              px-4
+              py-2
+            "
+          >
             <IoCalendarOutline className="text-blue-500" />
-            <span className="text-sm font-medium text-blue-700">Semua Event</span>
+
+            <span
+              className="
+                text-xs
+                font-semibold
+                text-blue-700
+
+                sm:text-sm
+              "
+            >
+              Semua Event
+            </span>
           </div>
-          
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">
+
+          <h2
+            className="
+              text-3xl
+              font-bold
+              tracking-tight
+              text-gray-900
+
+              sm:text-4xl
+              lg:text-5xl
+            "
+          >
+            <span
+              className="
+                bg-gradient-to-r
+                from-blue-600
+                to-cyan-500
+                bg-clip-text
+                text-transparent
+              "
+            >
               Kegiatan
-            </span>{' '}
-            HMPTI
+            </span>
+
+            {" HMPTI"}
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Temukan kegiatan terbaru dan menarik dari HMPTI Universitas Duta Bangsa
+
+          <p
+            className="
+              mx-auto
+              mt-4
+              max-w-2xl
+              text-sm
+              leading-7
+              text-gray-600
+
+              sm:text-base
+              md:text-lg
+            "
+          >
+            Temukan kegiatan terbaru dan berbagai program menarik dari HMPTI Universitas Duta Bangsa.
           </p>
         </motion.div>
 
-        {/* Events Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {Array.from({ length: eventsPerPage }).map((_, index) => (
-              <motion.div
-                key={index}
-                className="bg-white rounded-2xl shadow-lg shadow-gray-200/50 overflow-hidden border border-gray-100"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <div className="aspect-square bg-gray-200 animate-pulse" />
-                <div className="p-6 space-y-3">
-                  <div className="h-6 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
+        {/* =========================================
+            LOADING
+        ========================================== */}
+
+        {loading && <EventSkeleton />}
+
+        {/* =========================================
+            ERROR
+        ========================================== */}
+
+        {!loading && error && <EventError message={error} onRetry={() => setRetryKey((value) => value + 1)} />}
+
+        {/* =========================================
+            CONTENT
+        ========================================== */}
+
+        {!loading && !error && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              <AnimatePresence>
-                {selectedEvents.map((event) => (
-                  <motion.div
-                    key={event.id}
-                    className="bg-white rounded-2xl shadow-lg shadow-gray-200/50 overflow-hidden border border-gray-100 hover:shadow-xl hover:shadow-blue-200/30 hover:-translate-y-2 transition-all duration-300 cursor-pointer group"
-                    onClick={() => router.push(`/pages/event/${event.id}`)}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    layout
-                  >
-                    <div className="relative aspect-square">
-                      <Image 
-                        src={event.imageUrl} 
-                        alt={event.eventName} 
-                        fill 
-                        className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
-                      />
-                      <div className="absolute top-4 right-4">
-                        <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${statusColor(event.statusEvent)}`}>
-                          {event.statusEvent}
-                        </span>
-                      </div>
-                      {event.categoryEvent && (
-                        <div className="absolute top-4 left-4">
-                          <span className="px-2 py-1 bg-black/70 text-white text-xs font-medium rounded">
-                            {event.categoryEvent}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-6">
-                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                        <span className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full">
-                          <FiCalendar className="text-blue-500" />
-                          {formatDate(event.dateEvent)}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{event.eventName}</h3>
-                      <p className="text-gray-600 text-sm line-clamp-2 mb-4 leading-relaxed">{event.descriptionEvent}</p>
-                      <div className="flex items-center text-blue-600 text-sm font-medium group-hover:text-blue-700 transition-colors">
-                        Lihat detail 
-                        <FiArrowRight className="ml-1 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+            {selectedEvents.length > 0 && (
+              <motion.div
+                key={currentPage}
+                initial={{
+                  opacity: 0,
+                  y: 12,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                transition={{
+                  duration: 0.35,
+                }}
+                className="
+                    grid
+                    grid-cols-1
+                    gap-5
 
-            {/* Empty state */}
-            {events.length === 0 && !loading && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="text-center py-16"
+                    sm:grid-cols-2
+                    sm:gap-6
+
+                    lg:grid-cols-3
+
+                    xl:grid-cols-4
+                  "
               >
-                <div className="bg-white rounded-2xl p-8 shadow-lg shadow-gray-200/50 border border-gray-100 inline-block">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <IoCalendarOutline className="text-gray-400 text-2xl" />
-                  </div>
-                  <p className="text-gray-500">Belum ada event yang tersedia</p>
-                  <p className="text-gray-400 text-sm mt-2">Event baru akan segera hadir</p>
-                </div>
+                {selectedEvents.map((event, index) => (
+                  <EventCard key={event.id} event={event} index={index} />
+                ))}
               </motion.div>
             )}
 
-            {/* Pagination */}
-            {events.length > eventsPerPage && (
-              <div className="flex justify-center items-center mt-12 gap-4">
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  disabled={currentPage === 0}
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  className={`p-3 rounded-full shadow-lg ${currentPage === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-white text-blue-600 hover:bg-blue-50 border border-gray-200"}`}
-                >
-                  <FiChevronLeft size={20} />
-                </motion.button>
+            {/* EMPTY */}
 
-                <div className="flex items-center gap-2">
-                  {Array.from({ length: Math.min(totalPages, 5) }).map((_, idx) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = idx;
-                    } else if (currentPage < 3) {
-                      pageNum = idx;
-                    } else if (currentPage > totalPages - 4) {
-                      pageNum = totalPages - 5 + idx;
-                    } else {
-                      pageNum = currentPage - 2 + idx;
-                    }
+            {events.length === 0 && <EmptyEventState />}
 
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`w-10 h-10 rounded-full font-medium ${
-                          currentPage === pageNum 
-                            ? "bg-blue-600 text-white shadow-lg" 
-                            : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
-                        }`}
-                      >
-                        {pageNum + 1}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* PAGINATION */}
 
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  disabled={currentPage === totalPages - 1}
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  className={`p-3 rounded-full shadow-lg ${
-                    currentPage === totalPages - 1 
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed" 
-                      : "bg-white text-blue-600 hover:bg-blue-50 border border-gray-200"
-                  }`}
-                >
-                  <FiChevronRight size={20} />
-                </motion.button>
-              </div>
-            )}
+            {totalPages > 1 && <Pagination currentPage={currentPage} totalPages={totalPages} onChange={changePage} />}
           </>
         )}
       </div>
@@ -381,11 +897,819 @@ function EventView() {
   );
 }
 
-export default function EventPage() {
+// =========================================================
+// EVENT BACKGROUND
+// =========================================================
+
+function EventBackground() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <main className="min-h-screen">
-      <HeroViewEvent />
-      <EventView />
-    </main>
+    <div
+      aria-hidden="true"
+      className="
+        pointer-events-none
+        absolute
+        inset-0
+        overflow-hidden
+      "
+    >
+      <div
+        className="
+          absolute
+          inset-0
+          opacity-[0.08]
+          bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2QxZDVmMSIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=')]
+        "
+      />
+
+      <motion.div
+        className="
+          absolute
+          right-[7%]
+          top-[10%]
+          hidden
+          h-64
+          w-64
+          rounded-full
+          bg-blue-200/15
+          blur-3xl
+
+          md:block
+        "
+        animate={
+          shouldReduceMotion
+            ? undefined
+            : {
+                scale: [1, 1.1, 1],
+              }
+        }
+        transition={
+          shouldReduceMotion
+            ? undefined
+            : {
+                duration: 12,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }
+        }
+      />
+
+      <motion.div
+        className="
+          absolute
+          bottom-[8%]
+          left-[6%]
+          hidden
+          h-72
+          w-72
+          rounded-full
+          bg-cyan-300/10
+          blur-3xl
+
+          md:block
+        "
+        animate={
+          shouldReduceMotion
+            ? undefined
+            : {
+                scale: [1.08, 1, 1.08],
+              }
+        }
+        transition={
+          shouldReduceMotion
+            ? undefined
+            : {
+                duration: 14,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }
+        }
+      />
+    </div>
+  );
+}
+
+// =========================================================
+// EVENT CARD
+// =========================================================
+
+function EventCard({ event, index }: { event: Event; index: number }) {
+  return (
+    <motion.article
+      initial={{
+        opacity: 0,
+        y: 18,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      transition={{
+        duration: 0.45,
+
+        delay: Math.min(index * 0.04, 0.2),
+      }}
+      className="h-full"
+    >
+      <Link
+        href={`/pages/event/${event.id}`}
+        className="
+          group
+          flex
+          h-full
+          flex-col
+          overflow-hidden
+          rounded-2xl
+          border
+          border-gray-100
+          bg-white
+          shadow-sm
+          transition-all
+          duration-300
+
+          hover:-translate-y-1
+          hover:shadow-xl
+          hover:shadow-blue-100/50
+        "
+      >
+        {/* =========================================
+            IMAGE
+        ========================================== */}
+
+        <div
+          className="
+            relative
+            aspect-[4/3]
+            overflow-hidden
+            bg-gray-100
+          "
+        >
+          {event.imageUrl ? (
+            <Image
+              src={event.imageUrl}
+              alt={event.eventName}
+              fill
+              sizes="
+                (max-width: 639px) 92vw,
+                (max-width: 1023px) 46vw,
+                (max-width: 1279px) 30vw,
+                285px
+              "
+              className="
+                object-cover
+                transition-transform
+                duration-500
+
+                group-hover:scale-[1.035]
+              "
+            />
+          ) : (
+            <EventImagePlaceholder />
+          )}
+
+          <div
+            className="
+              pointer-events-none
+              absolute
+              inset-0
+              bg-gradient-to-t
+              from-black/20
+              via-transparent
+              to-transparent
+            "
+          />
+
+          {/* CATEGORY */}
+
+          {event.categoryEvent && (
+            <div
+              className="
+                absolute
+                left-3
+                top-3
+              "
+            >
+              <span
+                className="
+                  rounded-full
+                  bg-gray-950/75
+                  px-2.5
+                  py-1
+                  text-[11px]
+                  font-semibold
+                  text-white
+                  backdrop-blur-md
+                "
+              >
+                {event.categoryEvent}
+              </span>
+            </div>
+          )}
+
+          {/* STATUS */}
+
+          <div
+            className="
+              absolute
+              right-3
+              top-3
+            "
+          >
+            <span
+              className={`
+                rounded-full
+                border
+                px-2.5
+                py-1
+                text-[11px]
+                font-semibold
+
+                ${getStatusClass(event.statusEvent)}
+              `}
+            >
+              {getStatusLabel(event.statusEvent)}
+            </span>
+          </div>
+        </div>
+
+        {/* =========================================
+            CONTENT
+        ========================================== */}
+
+        <div
+          className="
+            flex
+            flex-1
+            flex-col
+            p-5
+          "
+        >
+          {/* DATE */}
+
+          <div
+            className="
+              mb-3
+              inline-flex
+              w-fit
+              items-center
+              gap-2
+              rounded-full
+              bg-gray-50
+              px-3
+              py-1.5
+              text-xs
+              font-medium
+              text-gray-500
+            "
+          >
+            <FiCalendar className="text-blue-500" />
+
+            {formatEventDate(event.dateEvent)}
+          </div>
+
+          {/* TITLE */}
+
+          <h3
+            className="
+              line-clamp-2
+              text-lg
+              font-bold
+              leading-snug
+              text-gray-900
+              transition-colors
+
+              group-hover:text-blue-600
+            "
+          >
+            {event.eventName}
+          </h3>
+
+          {/* OPTIONAL META */}
+
+          {(event.timeEvent || event.location) && (
+            <div
+              className="
+                mt-3
+                flex
+                flex-wrap
+                gap-x-4
+                gap-y-2
+                text-xs
+                text-gray-500
+              "
+            >
+              {event.timeEvent && (
+                <span
+                  className="
+                    inline-flex
+                    items-center
+                    gap-1.5
+                  "
+                >
+                  <FiClock className="text-blue-500" />
+
+                  {event.timeEvent}
+                </span>
+              )}
+
+              {event.location && (
+                <span
+                  className="
+                    inline-flex
+                    min-w-0
+                    items-center
+                    gap-1.5
+                  "
+                >
+                  <FiMapPin
+                    className="
+                      shrink-0
+                      text-blue-500
+                    "
+                  />
+
+                  <span className="line-clamp-1">{event.location}</span>
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* DESCRIPTION */}
+
+          <p
+            className="
+              mt-3
+              line-clamp-3
+              text-sm
+              leading-6
+              text-gray-600
+            "
+          >
+            {event.descriptionEvent}
+          </p>
+
+          {/* LINK */}
+
+          <div
+            className="
+              mt-auto
+              flex
+              items-center
+              pt-5
+              text-sm
+              font-semibold
+              text-blue-600
+            "
+          >
+            Lihat detail
+            <FiArrowRight
+              className="
+                ml-1.5
+                transition-transform
+
+                group-hover:translate-x-1
+              "
+            />
+          </div>
+        </div>
+      </Link>
+    </motion.article>
+  );
+}
+
+// =========================================================
+// IMAGE PLACEHOLDER
+// =========================================================
+
+function EventImagePlaceholder() {
+  return (
+    <div
+      className="
+        flex
+        h-full
+        w-full
+        items-center
+        justify-center
+        bg-gradient-to-br
+        from-blue-50
+        to-cyan-100
+      "
+    >
+      <IoCalendarOutline
+        className="
+          text-4xl
+          text-blue-400
+        "
+      />
+    </div>
+  );
+}
+
+// =========================================================
+// SKELETON
+// =========================================================
+
+function EventSkeleton() {
+  return (
+    <div
+      className="
+        grid
+        grid-cols-1
+        gap-5
+
+        sm:grid-cols-2
+        sm:gap-6
+
+        lg:grid-cols-3
+
+        xl:grid-cols-4
+      "
+    >
+      {Array.from({
+        length: EVENTS_PER_PAGE,
+      }).map((_, index) => (
+        <div
+          key={index}
+          className="
+            overflow-hidden
+            rounded-2xl
+            border
+            border-gray-100
+            bg-white
+            shadow-sm
+          "
+        >
+          <div
+            className="
+              aspect-[4/3]
+              animate-pulse
+              bg-gray-200
+            "
+          />
+
+          <div
+            className="
+              space-y-3
+              p-5
+            "
+          >
+            <div
+              className="
+                h-7
+                w-2/3
+                animate-pulse
+                rounded-full
+                bg-gray-100
+              "
+            />
+
+            <div
+              className="
+                h-5
+                animate-pulse
+                rounded
+                bg-gray-200
+              "
+            />
+
+            <div
+              className="
+                h-4
+                animate-pulse
+                rounded
+                bg-gray-100
+              "
+            />
+
+            <div
+              className="
+                h-4
+                w-4/5
+                animate-pulse
+                rounded
+                bg-gray-100
+              "
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// =========================================================
+// ERROR
+// =========================================================
+
+function EventError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div
+      className="
+        mx-auto
+        max-w-md
+        rounded-3xl
+        border
+        border-red-100
+        bg-white
+        p-6
+        text-center
+        shadow-sm
+
+        sm:p-8
+      "
+    >
+      <div
+        className="
+          mx-auto
+          mb-4
+          flex
+          h-14
+          w-14
+          items-center
+          justify-center
+          rounded-2xl
+          bg-red-50
+        "
+      >
+        <IoCalendarOutline
+          className="
+            text-2xl
+            text-red-500
+          "
+        />
+      </div>
+
+      <h3
+        className="
+          text-lg
+          font-bold
+          text-gray-900
+        "
+      >
+        Event Gagal Dimuat
+      </h3>
+
+      <p
+        className="
+          mt-2
+          text-sm
+          leading-6
+          text-gray-500
+        "
+      >
+        {message}
+      </p>
+
+      <button
+        type="button"
+        onClick={onRetry}
+        className="
+          mt-5
+          rounded-xl
+          bg-gray-900
+          px-5
+          py-2.5
+          text-sm
+          font-semibold
+          text-white
+          transition-colors
+
+          hover:bg-gray-800
+        "
+      >
+        Coba Lagi
+      </button>
+    </div>
+  );
+}
+
+// =========================================================
+// EMPTY
+// =========================================================
+
+function EmptyEventState() {
+  return (
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 16,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      className="
+        mx-auto
+        max-w-md
+        rounded-3xl
+        border
+        border-gray-100
+        bg-white
+        p-7
+        text-center
+        shadow-sm
+      "
+    >
+      <div
+        className="
+          mx-auto
+          mb-4
+          flex
+          h-14
+          w-14
+          items-center
+          justify-center
+          rounded-2xl
+          bg-gray-100
+        "
+      >
+        <IoCalendarOutline
+          className="
+            text-2xl
+            text-gray-400
+          "
+        />
+      </div>
+
+      <h3
+        className="
+          text-lg
+          font-bold
+          text-gray-800
+        "
+      >
+        Belum Ada Event
+      </h3>
+
+      <p
+        className="
+          mt-2
+          text-sm
+          leading-6
+          text-gray-500
+        "
+      >
+        Event dan kegiatan HMPTI berikutnya akan segera tersedia.
+      </p>
+    </motion.div>
+  );
+}
+
+// =========================================================
+// PAGINATION
+// =========================================================
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+
+  onChange: (page: number) => void;
+}) {
+  const pages = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from(
+        {
+          length: totalPages,
+        },
+        (_, index) => index,
+      );
+    }
+
+    let start = Math.max(currentPage - 2, 0);
+
+    if (start + 5 > totalPages) {
+      start = totalPages - 5;
+    }
+
+    return Array.from(
+      {
+        length: 5,
+      },
+      (_, index) => start + index,
+    );
+  }, [currentPage, totalPages]);
+
+  return (
+    <nav
+      aria-label="Navigasi halaman event"
+      className="
+        mt-10
+        flex
+        flex-wrap
+        items-center
+        justify-center
+        gap-2
+
+        sm:mt-12
+        sm:gap-3
+      "
+    >
+      <button
+        type="button"
+        aria-label="Halaman sebelumnya"
+        disabled={currentPage === 0}
+        onClick={() => onChange(currentPage - 1)}
+        className="
+          flex
+          h-10
+          w-10
+          items-center
+          justify-center
+          rounded-xl
+          border
+          border-gray-200
+          bg-white
+          text-blue-600
+          shadow-sm
+          transition-all
+
+          hover:bg-blue-50
+
+          disabled:cursor-not-allowed
+          disabled:bg-gray-100
+          disabled:text-gray-300
+          disabled:shadow-none
+        "
+      >
+        <FiChevronLeft />
+      </button>
+
+      {pages.map((page) => (
+        <button
+          key={page}
+          type="button"
+          aria-label={`Halaman ${page + 1}`}
+          aria-current={currentPage === page ? "page" : undefined}
+          onClick={() => onChange(page)}
+          className={`
+              flex
+              h-10
+              min-w-10
+              items-center
+              justify-center
+              rounded-xl
+              px-3
+              text-sm
+              font-semibold
+              transition-all
+
+              ${
+                currentPage === page
+                  ? `
+                    bg-blue-600
+                    text-white
+                    shadow-md
+                    shadow-blue-500/20
+                  `
+                  : `
+                    border
+                    border-gray-200
+                    bg-white
+                    text-gray-600
+
+                    hover:bg-gray-50
+                  `
+              }
+            `}
+        >
+          {page + 1}
+        </button>
+      ))}
+
+      <button
+        type="button"
+        aria-label="Halaman berikutnya"
+        disabled={currentPage === totalPages - 1}
+        onClick={() => onChange(currentPage + 1)}
+        className="
+          flex
+          h-10
+          w-10
+          items-center
+          justify-center
+          rounded-xl
+          border
+          border-gray-200
+          bg-white
+          text-blue-600
+          shadow-sm
+          transition-all
+
+          hover:bg-blue-50
+
+          disabled:cursor-not-allowed
+          disabled:bg-gray-100
+          disabled:text-gray-300
+          disabled:shadow-none
+        "
+      >
+        <FiChevronRight />
+      </button>
+    </nav>
   );
 }

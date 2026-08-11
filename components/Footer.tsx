@@ -1,236 +1,631 @@
 "use client";
-import { motion } from "framer-motion";
+
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { FiArrowRight, FiFacebook, FiInstagram, FiMail, FiMapPin, FiPhone, FiTwitter, FiYoutube, FiLinkedin } from "react-icons/fi";
 
-const MotionImage = motion(Image);
+import { usePathname } from "next/navigation";
+
+import { FiArrowUpRight, FiMail, FiMapPin, FiPhone } from "react-icons/fi";
+
+// =========================================================
+// NAVIGATION
+// =========================================================
+
+const QUICK_LINKS = [
+  {
+    name: "Beranda",
+    path: "/",
+  },
+  {
+    name: "Event",
+    path: "/pages/event",
+  },
+  {
+    name: "Fungsionaris",
+    path: "/pages/fungsionaris",
+  },
+  {
+    name: "Berita",
+    path: "/pages/news",
+  },
+];
+
+const DIVISION_LINKS = [
+  {
+    name: "Ketua & Wakil",
+    path: "/pages/fungsionaris/ketua-wakil",
+  },
+  {
+    name: "Sekretaris",
+    path: "/pages/fungsionaris/sekretaris",
+  },
+  {
+    name: "Bendahara",
+    path: "/pages/fungsionaris/bendahara",
+  },
+  {
+    name: "Humas",
+    path: "/pages/fungsionaris/humas",
+  },
+  {
+    name: "Kominfo",
+    path: "/pages/fungsionaris/kominfo",
+  },
+  {
+    name: "Riset & Teknologi",
+    path: "/pages/fungsionaris/riset-dan-teknologi",
+  },
+  {
+    name: "Minat & Bakat",
+    path: "/pages/fungsionaris/minat-dan-bakat",
+  },
+];
+
+// =========================================================
+// CONTACT
+// =========================================================
+
+const PHONE = "(0271) 2256-8420";
+
+const PHONE_HREF = "tel:+6227122568420";
+
+const EMAIL = "hmpti@udb.ac.id";
+
+const ADDRESS = "Jl. Bromo VII, Gebang RT 02/RW 16, Banjarsari, Surakarta, Jawa Tengah 57136";
+
+const MAP_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ADDRESS)}`;
+
+// =========================================================
+// COMPONENT
+// =========================================================
 
 export default function Footer() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
+
+  const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-gradient-to-br from-gray-900 via-[#374785] to-[#2a3562] text-white relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTYwIDAgTDAgMCBMIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLW9wYWNpdHk9IjAuMiIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3N2Zz4=')]"></div>
+    <footer
+      className="
+        relative
+        overflow-hidden
+        bg-[#0f172a]
+        text-white
+      "
+    >
+      {/* =========================================
+          DECORATION
+      ========================================== */}
+
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          absolute
+          inset-0
+          overflow-hidden
+        "
+      >
+        <div
+          className="
+            absolute
+            -left-32
+            top-0
+            h-80
+            w-80
+            rounded-full
+            bg-blue-600/10
+            blur-3xl
+          "
+        />
+
+        <div
+          className="
+            absolute
+            -right-32
+            bottom-0
+            h-96
+            w-96
+            rounded-full
+            bg-indigo-600/10
+            blur-3xl
+          "
+        />
       </div>
 
-      {/* Floating Elements */}
-      <div className="absolute inset-0 pointer-events-none">
-        <motion.div
-          className="absolute top-20 left-10% w-20 h-20 bg-blue-500/10 rounded-full blur-xl"
-          animate={{
-            y: [0, 20, 0],
-            scale: [1, 1.1, 1],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        <motion.div
-          className="absolute bottom-20 right-10% w-16 h-16 bg-purple-500/10 rounded-full blur-xl"
-          animate={{
-            y: [0, -15, 0],
-            scale: [1, 1.05, 1],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
-      </div>
+      {/* =========================================
+          MAIN FOOTER
+      ========================================== */}
 
-      <div className="container mx-auto px-4 py-16 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Brand Column */}
-          <div className="space-y-6">
-            <motion.div 
-              className="flex items-center gap-3 group"
-              whileHover={{ scale: 1.02 }}
-              transition={{ duration: 0.3 }}
+      <div
+        className="
+          relative
+          z-10
+          mx-auto
+          max-w-7xl
+          px-4
+          pb-10
+          pt-14
+
+          sm:px-6
+          sm:pb-12
+          sm:pt-16
+
+          lg:px-8
+          lg:pb-14
+          lg:pt-20
+        "
+      >
+        <div
+          className="
+            grid
+            grid-cols-1
+            gap-10
+
+            sm:grid-cols-2
+
+            lg:grid-cols-[1.4fr_0.8fr_1fr_1.2fr]
+            lg:gap-12
+          "
+        >
+          {/* =====================================
+              BRAND
+          ====================================== */}
+
+          <div>
+            <Link
+              href="/"
+              aria-label="HMPTI Universitas Duta Bangsa"
+              className="
+                inline-flex
+                items-center
+                gap-3
+              "
             >
-              <MotionImage
-                src="/assets/image/HMPTIlogo.png"
-                alt="HMPTI Logo"
-                width={60}
-                height={60}
-                className="rounded-lg bg-white/10 p-2 backdrop-blur-sm"
-                whileHover={{ rotate: 5, scale: 1.1 }}
-                transition={{ duration: 0.3 }}
-              />
-              <div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                  HMPTI UDB
-                </h2>
-                <p className="text-sm text-blue-200 font-medium">Informatics Community</p>
+              <div
+                className="
+                  relative
+                  h-12
+                  w-12
+                  shrink-0
+                  rounded-xl
+                  bg-white/10
+                  p-1
+                "
+              >
+                <Image
+                  src="/assets/image/HMPTIlogo.png"
+                  alt="Logo HMPTI"
+                  fill
+                  sizes="48px"
+                  className="
+                    object-contain
+                    p-1
+                  "
+                />
               </div>
-            </motion.div>
 
-            <p className="text-gray-300 leading-relaxed">
-              Himpunan Mahasiswa Program Studi Teknik Informatika Universitas Duta Bangsa Surakarta - 
-              Membangun komunitas teknologi yang inovatif dan kolaboratif.
+              <div>
+                <p
+                  className="
+                    text-xl
+                    font-extrabold
+                    tracking-tight
+                    text-white
+                  "
+                >
+                  HMPTI UDB
+                </p>
+
+                <p
+                  className="
+                    text-[11px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.12em]
+                    text-blue-300
+                  "
+                >
+                  Teknik Informatika
+                </p>
+              </div>
+            </Link>
+
+            <p
+              className="
+                mt-5
+                max-w-sm
+                text-sm
+                leading-7
+                text-slate-300
+              "
+            >
+              Himpunan Mahasiswa Program Studi Teknik Informatika Universitas Duta Bangsa Surakarta sebagai wadah pengembangan, kolaborasi, dan inovasi mahasiswa.
             </p>
 
-            <div className="flex gap-4">
-              {[
-                { icon: <FiFacebook size={20} />, href: "https://facebook.com", label: "Facebook" },
-                { icon: <FiInstagram size={20} />, href: "https://instagram.com", label: "Instagram" },
-                { icon: <FiTwitter size={20} />, href: "https://twitter.com", label: "Twitter" },
-                { icon: <FiYoutube size={20} />, href: "https://youtube.com", label: "YouTube" },
-                { icon: <FiLinkedin size={20} />, href: "https://linkedin.com", label: "LinkedIn" },
-              ].map((social, index) => (
-                <motion.a
-                  key={index}
-                  href={social.href}
-                  className="p-3 bg-white/10 rounded-xl backdrop-blur-sm hover:bg-white/20 transition-all duration-300 group"
-                  aria-label={social.label}
-                  whileHover={{ scale: 1.1, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <div className="text-white group-hover:text-blue-200 transition-colors">
-                    {social.icon}
-                  </div>
-                </motion.a>
-              ))}
+            <div
+              className="
+                mt-6
+                inline-flex
+                items-center
+                rounded-full
+                border
+                border-white/10
+                bg-white/5
+                px-3
+                py-1.5
+                text-xs
+                font-medium
+                text-slate-300
+              "
+            >
+              Informatics Community
             </div>
           </div>
 
-          {/* Quick Links Column */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-              Navigasi Cepat
-            </h3>
-            <ul className="space-y-4">
-              {[
-                { name: "Event", path: "/pages/event", icon: <FiArrowRight size={16} /> },
-                { name: "Fungsionaris", path: "/pages/fungsionaris", icon: <FiArrowRight size={16} /> },
-                { name: "Berita", path: "/pages/news", icon: <FiArrowRight size={16} /> },
-                { name: "Tentang Kami", path: "/pages/about", icon: <FiArrowRight size={16} /> },
-                { name: "Galeri", path: "/pages/gallery", icon: <FiArrowRight size={16} /> },
-              ].map((link, index) => (
-                <motion.li
-                  key={index}
-                  whileHover={{ x: 5 }}
-                  transition={{ duration: 0.2 }}
-                >
+          {/* =====================================
+              QUICK LINKS
+          ====================================== */}
+
+          <FooterColumn title="Navigasi">
+            <ul className="space-y-3">
+              {QUICK_LINKS.map((link) => (
+                <li key={link.path}>
                   <Link
                     href={link.path}
-                    className="text-gray-300 hover:text-white transition-all duration-300 flex items-center gap-3 group py-2"
+                    className="
+                        group
+                        inline-flex
+                        items-center
+                        gap-2
+                        text-sm
+                        text-slate-300
+                        transition-colors
+
+                        hover:text-white
+                      "
                   >
-                    <span className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      {link.icon}
-                    </span>
+                    <span
+                      className="
+                          h-1
+                          w-1
+                          rounded-full
+                          bg-slate-600
+                          transition-colors
+
+                          group-hover:bg-blue-400
+                        "
+                    />
+
                     {link.name}
                   </Link>
-                </motion.li>
+                </li>
               ))}
             </ul>
-          </div>
+          </FooterColumn>
 
-          {/* Divisi Column */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-              Divisi Kami
-            </h3>
-            <ul className="space-y-4">
-              {[
-                { name: "Ketua & Wakil", path: "/pages/ketua" },
-                { name: "Sekretaris", path: "/pages/sekretaris" },
-                { name: "Bendahara", path: "/pages/bendahara" },
-                { name: "Humas", path: "/pages/humas" },
-                { name: "Kominfo", path: "/pages/kominfo" },
-                { name: "Riset & Teknologi", path: "/pages/riset-teknologi" },
-                { name: "Minat & Bakat", path: "/pages/minat-bakat" },
-              ].map((division, index) => (
-                <motion.li
-                  key={index}
-                  whileHover={{ x: 5 }}
-                  transition={{ duration: 0.2 }}
-                >
+          {/* =====================================
+              DIVISIONS
+          ====================================== */}
+
+          <FooterColumn title="Fungsionaris">
+            <ul className="space-y-3">
+              {DIVISION_LINKS.map((division) => (
+                <li key={division.path}>
                   <Link
                     href={division.path}
-                    className="text-gray-300 hover:text-white transition-all duration-300 flex items-center gap-3 group py-2"
+                    className="
+                        group
+                        inline-flex
+                        items-center
+                        gap-2
+                        text-sm
+                        text-slate-300
+                        transition-colors
+
+                        hover:text-white
+                      "
                   >
-                    <span className="w-2 h-2 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    <span
+                      className="
+                          h-1
+                          w-1
+                          rounded-full
+                          bg-slate-600
+                          transition-colors
+
+                          group-hover:bg-blue-400
+                        "
+                    />
+
                     {division.name}
                   </Link>
-                </motion.li>
+                </li>
               ))}
             </ul>
-          </div>
+          </FooterColumn>
 
-          {/* Contact Column */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-              Hubungi Kami
-            </h3>
-            <ul className="space-y-4">
-              {[
-                { icon: <FiPhone className="flex-shrink-0" />, text: "(0271) 2256-8420" },
-                { icon: <FiMail className="flex-shrink-0" />, text: "hmpti@udb.ac.id" },
-                { 
-                  icon: <FiMapPin className="flex-shrink-0 mt-1" />, 
-                  text: "Jl. Bromo VII, Gebang RT02,RW16 Banjarsari, Surakarta, Jawa Tengah 57136" 
-                },
-              ].map((contact, index) => (
-                <motion.li
-                  key={index}
-                  className="flex items-start gap-4 text-gray-300 hover:text-white transition-colors duration-300 group"
-                  whileHover={{ x: 5 }}
-                >
-                  <span className="text-blue-400 group-hover:text-blue-300 transition-colors duration-300">
-                    {contact.icon}
-                  </span>
-                  <span className="leading-relaxed">{contact.text}</span>
-                </motion.li>
-              ))}
-            </ul>
+          {/* =====================================
+              CONTACT
+          ====================================== */}
 
-           
-          </div>
+          <FooterColumn title="Hubungi Kami">
+            <div className="space-y-4">
+              <a
+                href={PHONE_HREF}
+                className="
+                  group
+                  flex
+                  items-start
+                  gap-3
+                "
+              >
+                <ContactIcon>
+                  <FiPhone />
+                </ContactIcon>
+
+                <div>
+                  <p
+                    className="
+                      text-xs
+                      font-medium
+                      text-slate-500
+                    "
+                  >
+                    Telepon
+                  </p>
+
+                  <p
+                    className="
+                      mt-0.5
+                      text-sm
+                      leading-6
+                      text-slate-300
+                      transition-colors
+
+                      group-hover:text-white
+                    "
+                  >
+                    {PHONE}
+                  </p>
+                </div>
+              </a>
+
+              <a
+                href={`mailto:${EMAIL}`}
+                className="
+                  group
+                  flex
+                  items-start
+                  gap-3
+                "
+              >
+                <ContactIcon>
+                  <FiMail />
+                </ContactIcon>
+
+                <div className="min-w-0">
+                  <p
+                    className="
+                      text-xs
+                      font-medium
+                      text-slate-500
+                    "
+                  >
+                    Email
+                  </p>
+
+                  <p
+                    className="
+                      mt-0.5
+                      break-all
+                      text-sm
+                      leading-6
+                      text-slate-300
+                      transition-colors
+
+                      group-hover:text-white
+                    "
+                  >
+                    {EMAIL}
+                  </p>
+                </div>
+              </a>
+
+              <a
+                href={MAP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                  group
+                  flex
+                  items-start
+                  gap-3
+                "
+              >
+                <ContactIcon>
+                  <FiMapPin />
+                </ContactIcon>
+
+                <div>
+                  <p
+                    className="
+                      text-xs
+                      font-medium
+                      text-slate-500
+                    "
+                  >
+                    Alamat
+                  </p>
+
+                  <p
+                    className="
+                      mt-0.5
+                      text-sm
+                      leading-6
+                      text-slate-300
+                      transition-colors
+
+                      group-hover:text-white
+                    "
+                  >
+                    {ADDRESS}
+                  </p>
+                </div>
+              </a>
+            </div>
+          </FooterColumn>
         </div>
       </div>
 
-      {/* Copyright Section */}
-      <div className="border-t border-white/10 relative z-10">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-gray-400 text-sm text-center md:text-left">
-              &copy; {new Date().getFullYear()} <span className="text-blue-300">HMPTI UDB</span>. All rights reserved.
-            </p>
-            
-            <div className="flex items-center gap-6 text-sm text-gray-400">
-              <Link href="/privacy" className="hover:text-white transition-colors duration-300">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="hover:text-white transition-colors duration-300">
-                Terms of Service
-              </Link>
-              <Link href="/sitemap" className="hover:text-white transition-colors duration-300">
-                Sitemap
-              </Link>
-            </div>
+      {/* =========================================
+          BOTTOM FOOTER
+      ========================================== */}
 
-            <p className="text-gray-400 text-sm">
-              Developed by{" "}
-              <Link 
-                href="https://nexty.my.id" 
-                className="text-blue-300 hover:text-blue-200 underline transition-colors duration-300"
-              >
-                NEXTY LABS
-              </Link>
-            </p>
-          </div>
+      <div
+        className="
+          relative
+          z-10
+          border-t
+          border-white/10
+        "
+      >
+        <div
+          className="
+            mx-auto
+            flex
+            max-w-7xl
+            flex-col
+            gap-4
+            px-4
+            py-5
+
+            sm:px-6
+
+            md:flex-row
+            md:items-center
+            md:justify-between
+
+            lg:px-8
+          "
+        >
+          <p
+            className="
+              text-center
+              text-xs
+              leading-5
+              text-slate-500
+
+              md:text-left
+            "
+          >
+            © {currentYear} <span className="text-slate-300">HMPTI Universitas Duta Bangsa</span>. Seluruh hak cipta dilindungi.
+          </p>
+
+          <a
+            href="https://nextylabs.id"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="
+              group
+              inline-flex
+              items-center
+              justify-center
+              gap-1.5
+              text-xs
+              font-medium
+              text-slate-500
+              transition-colors
+
+              hover:text-slate-300
+            "
+          >
+            Developed by
+            <span
+              className="
+                font-semibold
+                text-blue-400
+
+                group-hover:text-blue-300
+              "
+            >
+              NEXTY LABS
+            </span>
+            <FiArrowUpRight
+              className="
+                text-[11px]
+                transition-transform
+
+                group-hover:-translate-y-0.5
+                group-hover:translate-x-0.5
+              "
+            />
+          </a>
         </div>
       </div>
     </footer>
+  );
+}
+
+// =========================================================
+// FOOTER COLUMN
+// =========================================================
+
+function FooterColumn({
+  title,
+  children,
+}: {
+  title: string;
+
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <h2
+        className="
+          mb-5
+          text-sm
+          font-bold
+          uppercase
+          tracking-[0.12em]
+          text-white
+        "
+      >
+        {title}
+      </h2>
+
+      {children}
+    </div>
+  );
+}
+
+// =========================================================
+// CONTACT ICON
+// =========================================================
+
+function ContactIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="
+        mt-0.5
+        flex
+        h-9
+        w-9
+        shrink-0
+        items-center
+        justify-center
+        rounded-xl
+        border
+        border-white/10
+        bg-white/5
+        text-blue-300
+      "
+    >
+      {children}
+    </span>
   );
 }
