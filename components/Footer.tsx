@@ -69,9 +69,9 @@ const PHONE = "(0271) 2256-8420";
 
 const PHONE_HREF = "tel:+6227122568420";
 
-const EMAIL = "hmpti@udb.ac.id";
+const EMAIL = "hmpti@fikom.udb.ac.id";
 
-const ADDRESS = "Jl. Bromo VII, Gebang RT 02/RW 16, Banjarsari, Surakarta, Jawa Tengah 57136";
+const ADDRESS = "Fakultas Ilmu Komputer Universitas Duta Bangsa Surakarta, Jl. Bhayangkara No.55, Tipes, Kec. Serengan, Kota Surakarta, Jawa Tengah 57154";
 
 const MAP_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ADDRESS)}`;
 
