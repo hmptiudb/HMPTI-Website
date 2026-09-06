@@ -83,6 +83,7 @@ const EVENT_CATEGORY_OPTIONS = [
   "Workshop",
   "Seminar",
   "Competition",
+  "Pendaftaran HMPTI",
 ];
 
 const AUDIENCE_OPTIONS = ["Mahasiswa", "SMA/SMK", "Umum", "Mahasiswa UDB"];
